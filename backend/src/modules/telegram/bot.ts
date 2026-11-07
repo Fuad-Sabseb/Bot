@@ -9,6 +9,7 @@ import { handleAnnouncementBroadcast, isUserAdmin } from "./handlers/announcemen
 import { handleFeedbackSubmission } from "./handlers/feedback.handler";
 import { handleAdminCallback } from "./handlers/admin.handler";
 import { handleHelp } from "./handlers/help.handler";
+import { handleArchiveCommand, handleArchiveCallback } from "./handlers/archive.handler";
 import { UsersService } from "../users/users.service";
 
 let activeBotInstance: TelegramBot | null = null;
@@ -99,6 +100,18 @@ export function initTelegramBot(): TelegramBot | null {
     }
   });
 
+  // /archive <query> command
+  bot.onText(/\/archive(?:\s+(.+))?/, async (msg, match) => {
+    const query = match ? match[1] : undefined;
+    await handleArchiveCommand(bot, msg.chat.id, query);
+  });
+
+  // /past_exams <query> command
+  bot.onText(/\/past_exams(?:\s+(.+))?/, async (msg, match) => {
+    const query = match ? match[1] : undefined;
+    await handleArchiveCommand(bot, msg.chat.id, query);
+  });
+
   // Callback Query Dispatcher
   bot.on("callback_query", async (query) => {
     const chatId = query.message?.chat.id;
@@ -125,6 +138,10 @@ export function initTelegramBot(): TelegramBot | null {
         parse_mode: "Markdown",
         reply_markup: backButton,
       });
+    }
+
+    if (data === "academic_archive") {
+      return handleArchiveCallback(bot, chatId, messageId);
     }
 
     if (data === "assignment") {
