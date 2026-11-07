@@ -394,6 +394,39 @@ npm test
 - `blog_read_<id>` callback — Delivers formatted article snippet, author information, view/like counters, and direct Web App reading links.
 - `✍️ Student Blog & Ideas` — Main menu interactive button with quick access to student knowledge sharing.
 
+---
+
+## 15. Phase 8 Endpoints & Features Reference
+
+### AI Academic Assistant & Document Intelligence (`/api/v1/ai`)
+
+#### Student Quota & Chat Engine
+- `GET /api/v1/ai/quota` — Retrieve student daily and monthly token allowances (default 50,000 daily, 1,000,000 monthly) with automated 24-hour daily consumption reset.
+- `GET /api/v1/ai/conversations` — List conversation threads ordered by recent activity with message count and snippet.
+- `POST /api/v1/ai/conversations` — Initialize a new conversation thread.
+- `GET /api/v1/ai/conversations/:id` — Retrieve full conversation message history with timestamps, role attribution, and source citations. Enforces conversation ownership privacy.
+- `DELETE /api/v1/ai/conversations/:id` — Delete conversation thread and associated message history.
+- `POST /api/v1/ai/conversations/:id/messages` — Send message in active conversation. Supports specialized modes:
+  - `code` — Programming code debugging and algorithmic complexity analysis ($O(N)$ notation).
+  - `math` — Mathematical derivations, equations ($$...$$), and step-by-step proofs.
+  - `summarize` — Lecture notes executive summaries and key bullet points.
+  - `exam_prep` / `study_plan` — Structured revision schedules and timetable milestones.
+  - `general` — General academic inquiry.
+- `POST /api/v1/ai/ask` — Direct query without creating a persistent conversation thread (ideal for quick questions).
+
+#### RAG Document Chunking & Grounded Answering
+- `POST /api/v1/ai/index/:materialId` — Index approved learning materials into `DocumentChunk` records with token counting and pgvector 1536-dimensional embeddings.
+- Automatic RAG Grounding — When querying academic concepts or scoping to a course offering, the assistant retrieves matching verified chunks and outputs grounded answers strictly attributed to official documents with `[Source: ...]` citations.
+
+#### Administrator AI Analytics & Quota Control
+- `GET /api/v1/ai/admin/analytics` — Institutional AI usage dashboard: total requests, cumulative tokens consumed, active users today, cost estimates, and top consuming students.
+- `PATCH /api/v1/ai/admin/quotas/:userId` — Administrator modification of student daily and monthly token quotas.
+
+### Telegram Bot AI Integration
+- `/ai <prompt>` or `/ask <prompt>` — 24/7 academic tutoring directly in Telegram with formatted responses, grounded source citations, and daily quota metrics.
+- `🤖 AI Assistant` — Interactive main menu button with usage guidance and web deep links.
+
+
 
 
 

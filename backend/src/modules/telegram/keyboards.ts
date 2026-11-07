@@ -16,9 +16,12 @@ export const mainMenuKeyboard: TelegramBot.InlineKeyboardMarkup = {
     ],
     [
       { text: "✍️ Student Blog & Ideas", callback_data: "community_blog" },
-      { text: "📢 Announcement", callback_data: "announcement" },
+      { text: "🤖 AI Assistant", callback_data: "ai_assistant" },
     ],
-    [{ text: "💬 Feedback", callback_data: "feedback" }],
+    [
+      { text: "📢 Announcement", callback_data: "announcement" },
+      { text: "💬 Feedback", callback_data: "feedback" },
+    ],
     [{ text: "🧑‍💼 Admin", callback_data: "admin_panel" }],
     [{ text: "❓ Help", callback_data: "help" }],
   ],

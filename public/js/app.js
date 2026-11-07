@@ -39,6 +39,8 @@ async function checkAuthSession() {
       if (currentUser.globalRoles?.includes("ADMIN")) {
         const modBtn = document.getElementById("viewAdminModerationBtn");
         if (modBtn) modBtn.style.display = "inline-flex";
+        const aiAdminBtn = document.getElementById("openAiAnalyticsBtn");
+        if (aiAdminBtn) aiAdminBtn.style.display = "inline-flex";
       }
       return true;
     } else {
@@ -133,6 +135,11 @@ document.querySelectorAll(".tab-btn").forEach((btn) => {
     }
     if (btn.dataset.tab === "blog") {
       loadBlogPosts();
+    }
+    if (btn.dataset.tab === "ai") {
+      loadAiOfferings();
+      loadAiQuota();
+      loadAiConversations();
     }
     if (btn.dataset.tab === "groups") loadGroupAssignmentsDropdown();
     if (btn.dataset.tab === "teacher") loadTeacherOfferings();
@@ -2798,6 +2805,364 @@ async function adminResolveReport(reportId, action) {
     alert(`Error: ${err.message}`);
   }
 }
+
+// ====================================================
+// PHASE 8: AI ACADEMIC ASSISTANT & RAG SYSTEM
+// ====================================================
+
+let activeAiConversationId = null;
+let activeAiMode = "general";
+
+// Mode Pills Selector
+document.querySelectorAll(".ai-mode-pill").forEach((pill) => {
+  pill.addEventListener("click", () => {
+    document.querySelectorAll(".ai-mode-pill").forEach((p) => {
+      p.classList.remove("active");
+      p.classList.add("btn-secondary");
+    });
+    pill.classList.add("active");
+    pill.classList.remove("btn-secondary");
+    activeAiMode = pill.dataset.mode || "general";
+  });
+});
+
+// Load Course Offerings for Grounding Scope
+async function loadAiOfferings() {
+  const select = document.getElementById("aiCourseOfferingFilter");
+  if (!select) return;
+  try {
+    const res = await fetch("/api/v1/academic/offerings/my-courses", {
+      headers: { Authorization: `Bearer ${getAuthToken()}` },
+    });
+    const result = await res.json();
+    if (result.success && Array.isArray(result.data)) {
+      select.innerHTML = `<option value="">All Approved Repository Documents</option>` +
+        result.data.map(o => `<option value="${o.id}">${o.course?.code || "Course"} - ${o.course?.title || "Offering"}</option>`).join("");
+    }
+  } catch (err) {
+    console.error("AI Offerings load failed:", err.message);
+  }
+}
+
+// Load User Quota
+async function loadAiQuota() {
+  const badge = document.getElementById("aiQuotaBadge");
+  if (!badge) return;
+  try {
+    const res = await fetch("/api/v1/ai/quota", {
+      headers: { Authorization: `Bearer ${getAuthToken()}` },
+    });
+    const result = await res.json();
+    if (result.success && result.data) {
+      const q = result.data;
+      badge.innerText = `⚡ Daily Quota: ${q.dailyRemaining.toLocaleString()} / ${q.dailyTokenLimit.toLocaleString()} tokens`;
+      badge.style.background = q.dailyRemaining < 5000 ? "#fee2e2" : "#e0e7ff";
+      badge.style.color = q.dailyRemaining < 5000 ? "#991b1b" : "#4338ca";
+    }
+  } catch (err) {
+    console.error("AI Quota load failed:", err.message);
+  }
+}
+
+// Load Conversations List
+async function loadAiConversations() {
+  const list = document.getElementById("aiConversationsList");
+  if (!list) return;
+
+  try {
+    const res = await fetch("/api/v1/ai/conversations", {
+      headers: { Authorization: `Bearer ${getAuthToken()}` },
+    });
+    const result = await res.json();
+
+    if (!result.success || !result.data || result.data.length === 0) {
+      list.innerHTML = `<div style="text-align: center; padding: 1.5rem; color: var(--neutral-600); font-size: 0.85rem;">No conversations yet. Start a new chat!</div>`;
+      return;
+    }
+
+    list.innerHTML = result.data.map((c) => `
+      <div class="ai-convo-item ${c.id === activeAiConversationId ? "active" : ""}" style="padding: 0.65rem 0.75rem; border-radius: var(--radius); cursor: pointer; display: flex; justify-content: space-between; align-items: center; background: ${c.id === activeAiConversationId ? "#e0e7ff" : "transparent"}; margin-bottom: 0.25rem;" onclick="selectAiConversation('${c.id}')">
+        <div style="flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.85rem; font-weight: ${c.id === activeAiConversationId ? "700" : "500"}; color: ${c.id === activeAiConversationId ? "#4338ca" : "inherit"};">
+          💬 ${c.title}
+        </div>
+        <button class="btn btn-sm" style="padding: 0.1rem 0.35rem; font-size: 0.7rem; color: var(--danger); background: transparent; border: 0;" onclick="event.stopPropagation(); deleteAiConversation('${c.id}')">✕</button>
+      </div>
+    `).join("");
+  } catch (err) {
+    list.innerHTML = `<div style="color: var(--danger); font-size: 0.8rem; padding: 1rem;">Failed to load conversations</div>`;
+  }
+}
+
+// Select and open conversation
+async function selectAiConversation(conversationId) {
+  activeAiConversationId = conversationId;
+  loadAiConversations();
+
+  const container = document.getElementById("aiMessagesContainer");
+  container.innerHTML = `<div style="text-align: center; margin: auto; color: var(--neutral-600);">Loading messages...</div>`;
+
+  try {
+    const res = await fetch(`/api/v1/ai/conversations/${conversationId}`, {
+      headers: { Authorization: `Bearer ${getAuthToken()}` },
+    });
+    const result = await res.json();
+
+    if (!result.success) {
+      container.innerHTML = `<div style="color: var(--danger); text-align: center; margin: auto;">Could not load messages: ${result.error}</div>`;
+      return;
+    }
+
+    const msgs = result.data.messages || [];
+
+    if (msgs.length === 0) {
+      container.innerHTML = `
+        <div style="text-align: center; margin: auto; max-width: 440px; color: var(--neutral-600);">
+          <p style="font-size: 2.5rem; margin-bottom: 0.5rem;">🤖</p>
+          <h3 style="margin-bottom: 0.5rem;">Conversation Ready</h3>
+          <p style="font-size: 0.85rem;">Ask a question below. The assistant can explain code, solve math problems, or reference course materials.</p>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = msgs.map((m) => renderAiMessageBubble(m)).join("");
+    container.scrollTop = container.scrollHeight;
+  } catch (err) {
+    container.innerHTML = `<div style="color: var(--danger); text-align: center; margin: auto;">Error: ${err.message}</div>`;
+  }
+}
+
+// Render message bubble
+function renderAiMessageBubble(m) {
+  const isUser = m.role === "user";
+  return `
+    <div style="display: flex; gap: 0.75rem; align-items: flex-start; justify-content: ${isUser ? "flex-end" : "flex-start"};">
+      ${!isUser ? `
+        <div style="width: 34px; height: 34px; border-radius: 50%; background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 1rem; font-weight: 700; flex-shrink: 0;">
+          🤖
+        </div>
+      ` : ""}
+      <div style="max-width: 78%; background: ${isUser ? "#4f46e5" : "#f8fafc"}; color: ${isUser ? "#fff" : "var(--neutral-900)"}; padding: 0.85rem 1.15rem; border-radius: 12px; border: ${isUser ? "none" : "1px solid var(--neutral-200)"}; line-height: 1.6; font-size: 0.95rem; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+        ${isUser ? `<div style="white-space: pre-wrap;">${m.content}</div>` : `
+          <div>${renderMarkdown(m.content)}</div>
+          ${m.sources && m.sources.length > 0 ? `
+            <div style="margin-top: 0.75rem; padding-top: 0.5rem; border-top: 1px solid var(--neutral-200); font-size: 0.75rem; color: var(--neutral-600);">
+              <strong>📚 Grounded Sources:</strong>
+              <ul style="margin: 0.25rem 0 0 1rem; padding: 0;">
+                ${m.sources.map(s => `<li><code>${s}</code></li>`).join("")}
+              </ul>
+            </div>
+          ` : ""}
+        `}
+        <div style="font-size: 0.7rem; color: ${isUser ? "rgba(255,255,255,0.7)" : "var(--neutral-500)"}; margin-top: 0.35rem; text-align: right;">
+          ${new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+        </div>
+      </div>
+      ${isUser ? `
+        <div style="width: 34px; height: 34px; border-radius: 50%; background: #6366f1; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 1rem; font-weight: 700; flex-shrink: 0;">
+          👤
+        </div>
+      ` : ""}
+    </div>
+  `;
+}
+
+// New Chat Button
+document.getElementById("newAiChatBtn")?.addEventListener("click", () => {
+  activeAiConversationId = null;
+  loadAiConversations();
+  const container = document.getElementById("aiMessagesContainer");
+  container.innerHTML = `
+    <div style="text-align: center; margin: auto; max-width: 440px; color: var(--neutral-600);">
+      <p style="font-size: 2.5rem; margin-bottom: 0.5rem;">🤖</p>
+      <h3 style="margin-bottom: 0.5rem;">How can I help with your academics today?</h3>
+      <p style="font-size: 0.85rem;">Ask questions about algorithms, mathematical derivations, exam preparation, or request a customized study plan.</p>
+    </div>
+  `;
+});
+
+// Delete Conversation
+async function deleteAiConversation(conversationId) {
+  if (!confirm("Are you sure you want to delete this chat thread?")) return;
+  try {
+    const res = await fetch(`/api/v1/ai/conversations/${conversationId}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${getAuthToken()}` },
+    });
+    const result = await res.json();
+    if (result.success) {
+      if (activeAiConversationId === conversationId) {
+        activeAiConversationId = null;
+        document.getElementById("newAiChatBtn").click();
+      }
+      loadAiConversations();
+    }
+  } catch (err) {
+    alert(`Error: ${err.message}`);
+  }
+}
+
+// Send Message Form
+document.getElementById("aiChatForm")?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const input = document.getElementById("aiPromptInput");
+  const prompt = input.value.trim();
+  if (!prompt) return;
+
+  const courseOfferingId = document.getElementById("aiCourseOfferingFilter").value || undefined;
+  const container = document.getElementById("aiMessagesContainer");
+
+  // If new conversation, create thread first
+  if (!activeAiConversationId) {
+    try {
+      const initRes = await fetch("/api/v1/ai/conversations", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${getAuthToken()}`,
+        },
+        body: JSON.stringify({ title: prompt.slice(0, 30) }),
+      });
+      const initData = await initRes.json();
+      if (initData.success) {
+        activeAiConversationId = initData.data.id;
+        container.innerHTML = "";
+      } else {
+        alert(initData.error);
+        return;
+      }
+    } catch (err) {
+      alert(err.message);
+      return;
+    }
+  }
+
+  // Append user bubble immediately
+  container.innerHTML += renderAiMessageBubble({
+    role: "user",
+    content: prompt,
+    createdAt: new Date().toISOString(),
+  });
+  input.value = "";
+
+  // Append typing indicator
+  const typingId = `typing_${Date.now()}`;
+  container.innerHTML += `
+    <div id="${typingId}" style="display: flex; gap: 0.75rem; align-items: center; color: var(--neutral-600); font-size: 0.85rem;">
+      <div style="width: 34px; height: 34px; border-radius: 50%; background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center;">🤖</div>
+      <div>Thinking & consulting academic sources... ⏳</div>
+    </div>
+  `;
+  container.scrollTop = container.scrollHeight;
+
+  try {
+    const res = await fetch(`/api/v1/ai/conversations/${activeAiConversationId}/messages`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${getAuthToken()}`,
+      },
+      body: JSON.stringify({
+        prompt,
+        mode: activeAiMode,
+        courseOfferingId,
+      }),
+    });
+    const result = await res.json();
+
+    document.getElementById(typingId)?.remove();
+
+    if (result.success) {
+      container.innerHTML += renderAiMessageBubble(result.data.message);
+      container.scrollTop = container.scrollHeight;
+      loadAiQuota();
+      loadAiConversations();
+    } else {
+      container.innerHTML += `
+        <div style="color: var(--danger); padding: 0.75rem; background: #fee2e2; border-radius: var(--radius); font-size: 0.9rem;">
+          ⚠️ ${result.error}
+        </div>
+      `;
+    }
+  } catch (err) {
+    document.getElementById(typingId)?.remove();
+    alert(`Error: ${err.message}`);
+  }
+});
+
+// Shift+Enter / Enter listener in textarea
+document.getElementById("aiPromptInput")?.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    document.getElementById("aiChatForm").requestSubmit();
+  }
+});
+
+// Admin Analytics Modal
+document.getElementById("openAiAnalyticsBtn")?.addEventListener("click", async () => {
+  const modal = document.getElementById("aiAnalyticsModal");
+  const body = document.getElementById("aiAnalyticsBody");
+  body.innerHTML = `<div style="text-align: center; padding: 2rem;">Loading institutional AI analytics...</div>`;
+  modal.classList.remove("hidden");
+
+  try {
+    const res = await fetch("/api/v1/ai/admin/analytics", {
+      headers: { Authorization: `Bearer ${getAuthToken()}` },
+    });
+    const result = await res.json();
+
+    if (!result.success) {
+      body.innerHTML = `<div style="color: var(--danger); text-align: center;">${result.error}</div>`;
+      return;
+    }
+
+    const a = result.data;
+    body.innerHTML = `
+      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
+        <div style="background: #f8fafc; padding: 1rem; border-radius: var(--radius); border: 1px solid var(--neutral-200);">
+          <div style="font-size: 1.5rem; font-weight: 700;">${a.totalRequests.toLocaleString()}</div>
+          <div style="font-size: 0.8rem; color: var(--neutral-600);">Total AI Requests</div>
+        </div>
+        <div style="background: #f8fafc; padding: 1rem; border-radius: var(--radius); border: 1px solid var(--neutral-200);">
+          <div style="font-size: 1.5rem; font-weight: 700; color: #4338ca;">${a.totalTokens.toLocaleString()}</div>
+          <div style="font-size: 0.8rem; color: var(--neutral-600);">Tokens Consumed</div>
+        </div>
+        <div style="background: #f8fafc; padding: 1rem; border-radius: var(--radius); border: 1px solid var(--neutral-200);">
+          <div style="font-size: 1.5rem; font-weight: 700; color: #16a34a;">${a.activeUsersToday}</div>
+          <div style="font-size: 0.8rem; color: var(--neutral-600);">Active Users Today</div>
+        </div>
+        <div style="background: #f8fafc; padding: 1rem; border-radius: var(--radius); border: 1px solid var(--neutral-200);">
+          <div style="font-size: 1.5rem; font-weight: 700; color: #0284c7;">$${a.totalCostEstimated}</div>
+          <div style="font-size: 0.8rem; color: var(--neutral-600);">Estimated API Cost</div>
+        </div>
+      </div>
+
+      <h4 style="margin-bottom: 0.75rem;">Top Consuming Students:</h4>
+      ${a.topUsers.length > 0 ? `
+        <table>
+          <thead>
+            <tr>
+              <th>Student</th>
+              <th>Requests</th>
+              <th>Tokens Used</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${a.topUsers.map(u => `
+              <tr>
+                <td><strong>${u.user.fullName}</strong> (${u.user.campusId || "User"})</td>
+                <td>${u.requests}</td>
+                <td>${u.tokens.toLocaleString()} tokens</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      ` : `<p style="color: var(--neutral-600);">No usage records logged yet.</p>`}
+    `;
+  } catch (err) {
+    body.innerHTML = `<div style="color: var(--danger); text-align: center;">Error: ${err.message}</div>`;
+  }
+});
 
 // Initial boot
 document.addEventListener("DOMContentLoaded", () => {
