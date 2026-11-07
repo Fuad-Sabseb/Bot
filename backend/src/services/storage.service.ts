@@ -19,7 +19,7 @@ export class StorageService {
    */
   static saveFile(
     fileBuffer: Buffer,
-    subFolder: "assignments/individual" | "assignments/group" | "attachments" | "materials" | "uploads",
+    subFolder: "assignments/individual" | "assignments/group" | "attachments" | "materials" | "archive" | "uploads",
     originalName: string,
     mimeType: string
   ): StoredFileMeta {
@@ -77,5 +77,22 @@ export class StorageService {
   static getFileStream(fileKey: string): fs.ReadStream {
     const filePath = this.getFilePath(fileKey);
     return fs.createReadStream(filePath);
+  }
+
+  /**
+   * Safely delete a stored file from disk.
+   */
+  static deleteFile(fileKey: string): boolean {
+    try {
+      const filePath = this.getFilePath(fileKey);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+        return true;
+      }
+      return false;
+    } catch (err: any) {
+      console.warn(`⚠️ Failed to delete file ${fileKey}:`, err.message);
+      return false;
+    }
   }
 }
