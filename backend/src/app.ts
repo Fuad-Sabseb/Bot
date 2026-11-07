@@ -10,6 +10,8 @@ import academicRoutes from "./modules/academic/academic.routes";
 import dashboardRoutes from "./modules/dashboard/dashboard.routes";
 import assignmentsRoutes from "./modules/assignments/assignments.routes";
 import notificationsRoutes from "./modules/notifications/notifications.routes";
+import materialsRoutes from "./modules/materials/materials.routes";
+import archiveRoutes from "./modules/archive/archive.routes";
 import { errorHandler } from "./middleware/error.middleware";
 import { csrfProtection } from "./middleware/csrf.middleware";
 import { authenticate } from "./middleware/auth.middleware";
@@ -67,6 +69,8 @@ export function createApp(): Application {
   v1Router.use("/dashboard", dashboardRoutes);
   v1Router.use("/assignments", assignmentsRoutes);
   v1Router.use("/notifications", notificationsRoutes);
+  v1Router.use("/materials", materialsRoutes);
+  v1Router.use("/archive", archiveRoutes);
 
   // Protected Profile Route (Test & Verification)
   v1Router.get("/auth/me", authenticate, (req: Request, res: Response) => {
