@@ -55,6 +55,12 @@
       <button class="tab-btn active" data-tab="dashboard">
         📋 Student Assignment Dashboard
       </button>
+      <button class="tab-btn" data-tab="materials">
+        📚 Learning Materials & Resources
+      </button>
+      <button class="tab-btn" data-tab="archive">
+        🏛️ Past Exams & Project Archive
+      </button>
       <button class="tab-btn" data-tab="groups">
         👥 Assignment Groups
       </button>
@@ -169,6 +175,181 @@
         <div id="submissionsTableContainer">
           <p style="color: var(--neutral-600);">Select a course offering to view assignments and student submissions.</p>
         </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: LEARNING MATERIALS & ACADEMIC RESOURCES -->
+    <section id="tab-materials" class="tab-content hidden">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+        <div>
+          <h2>Academic Learning Resources Library</h2>
+          <p style="color: var(--neutral-600); font-size: 0.9rem;">Browse lecture notes, slides, reference books, tutorials, and past study materials.</p>
+        </div>
+        <button id="openUploadMaterialModalBtn" class="btn btn-primary">📤 Upload New Resource</button>
+      </div>
+
+      <!-- Resource Metrics -->
+      <div class="dashboard-metrics" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
+        <div class="metric-card">
+          <div class="metric-number" id="metricMaterialsTotal">0</div>
+          <div class="metric-label">Approved Resources</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-number" id="metricMaterialsDownloads" style="color: var(--success);">0</div>
+          <div class="metric-label">Total Downloads</div>
+        </div>
+      </div>
+
+      <!-- Search & Filters -->
+      <div class="filter-bar">
+        <div class="filter-group" style="flex: 1; min-width: 200px;">
+          <input type="text" id="materialsSearchInput" placeholder="🔍 Search resources by keyword or topic..." style="width: 100%;" />
+        </div>
+
+        <div class="filter-group">
+          <label style="font-weight: 600; font-size: 0.85rem;">Category:</label>
+          <select id="materialsCategoryFilter">
+            <option value="">All Categories</option>
+            <option value="LECTURE_SLIDES">Lecture Slides</option>
+            <option value="LECTURE_NOTES">Lecture Notes</option>
+            <option value="PDF_BOOKS">PDF Textbooks</option>
+            <option value="REFERENCE_BOOKS">Reference Books</option>
+            <option value="PROGRAMMING_RESOURCES">Programming Tutorials</option>
+            <option value="LABORATORY_MATERIALS">Lab Guides</option>
+            <option value="TUTORIAL_SHEETS">Tutorial Sheets</option>
+            <option value="PREVIOUS_ASSIGNMENTS">Previous Assignments</option>
+            <option value="OTHER">Other Academic</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label style="font-weight: 600; font-size: 0.85rem;">Course Offering:</label>
+          <select id="materialsOfferingFilter">
+            <option value="">All Enrolled Courses</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label style="font-weight: 600; font-size: 0.85rem;">Sort By:</label>
+          <select id="materialsSortBy">
+            <option value="newest">Newest First</option>
+            <option value="downloads">Most Downloaded</option>
+            <option value="title">Alphabetical</option>
+          </select>
+        </div>
+
+        <button id="refreshMaterialsBtn" class="btn btn-secondary btn-sm">🔄 Refresh</button>
+      </div>
+
+      <!-- Moderation Queue Notice (For Teachers & Admins) -->
+      <div id="materialsModerationSection" class="hidden" style="margin-bottom: 1.5rem; background: #fffbeb; border: 1px solid #fde68a; border-radius: var(--radius); padding: 1.25rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+          <h4 style="color: #92400e;">🛡️ Pending Moderation Queue</h4>
+          <span id="pendingModerationBadge" class="badge badge-late">0 Pending</span>
+        </div>
+        <div id="pendingModerationList">Loading queue...</div>
+      </div>
+
+      <!-- Materials Grid Container -->
+      <div id="materialsList">
+        <div style="text-align: center; padding: 2rem; color: var(--neutral-600);">Loading learning materials...</div>
+      </div>
+    </section>
+
+    <!-- TAB 5: ACADEMIC ARCHIVE & PAST EXAMS -->
+    <section id="tab-archive" class="tab-content hidden">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+        <div>
+          <h2>🏛️ University Academic Archive & Past Papers</h2>
+          <p style="color: var(--neutral-600); font-size: 0.9rem;">Browse past exams, projects, official answer keys, and student reference materials.</p>
+        </div>
+        <button id="openUploadArchiveBtn" class="btn btn-primary">➕ Contribute to Archive</button>
+      </div>
+
+      <!-- Resource Type Quick Filter Pills -->
+      <div style="display: flex; gap: 0.5rem; margin-bottom: 1.25rem; flex-wrap: wrap;">
+        <button class="btn btn-sm archive-type-pill active" data-type="" style="border-radius: 9999px;">All Archive</button>
+        <button class="btn btn-sm archive-type-pill btn-secondary" data-type="PAST_EXAM" style="border-radius: 9999px;">📝 Past Exam Papers</button>
+        <button class="btn btn-sm archive-type-pill btn-secondary" data-type="PROJECT" style="border-radius: 9999px;">💻 Projects & Research</button>
+        <button class="btn btn-sm archive-type-pill btn-secondary" data-type="SOLUTION" style="border-radius: 9999px;">💡 Solutions & Keys</button>
+        <button class="btn btn-sm archive-type-pill btn-secondary" data-type="REFERENCE" style="border-radius: 9999px;">📚 Reference Submissions</button>
+      </div>
+
+      <!-- Search & Filters -->
+      <div class="filter-bar">
+        <div class="filter-group" style="flex: 1; min-width: 200px;">
+          <input type="text" id="archiveSearchInput" placeholder="🔍 Search by subject, paper, or keyword..." style="width: 100%;" />
+        </div>
+
+        <div class="filter-group">
+          <label style="font-weight: 600; font-size: 0.85rem;">Assessment Type:</label>
+          <select id="archiveAssessmentFilter">
+            <option value="">All Assessment Types</option>
+            <option value="MIDTERM">Midterm Exam</option>
+            <option value="FINAL">Final Exam</option>
+            <option value="QUIZ">Quiz / Test</option>
+            <option value="LAB_EXAM">Lab / Practical Exam</option>
+            <option value="GRADUATION_PROJECT">Graduation Project</option>
+            <option value="TERM_PROJECT">Term / Course Project</option>
+            <option value="ASSIGNMENT">Past Assignment</option>
+            <option value="OTHER">Other</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label style="font-weight: 600; font-size: 0.85rem;">Exam Year:</label>
+          <select id="archiveYearFilter">
+            <option value="">All Years</option>
+            <option value="2025">2025</option>
+            <option value="2024">2024</option>
+            <option value="2023">2023</option>
+            <option value="2022">2022</option>
+            <option value="2021">2021</option>
+            <option value="2020">2020</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label style="font-weight: 600; font-size: 0.85rem;">Source:</label>
+          <select id="archiveOfficialFilter">
+            <option value="">All Sources</option>
+            <option value="true">⭐ Official Solutions Only</option>
+            <option value="false">👤 Student Reference Submissions</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label style="font-weight: 600; font-size: 0.85rem;">Course Offering:</label>
+          <select id="archiveOfferingFilter">
+            <option value="">All Courses</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label style="font-weight: 600; font-size: 0.85rem;">Sort By:</label>
+          <select id="archiveSortBy">
+            <option value="newest">Newest First</option>
+            <option value="examYear">Exam Year (Recent First)</option>
+            <option value="downloads">Most Downloaded</option>
+            <option value="title">Alphabetical</option>
+          </select>
+        </div>
+
+        <button id="refreshArchiveBtn" class="btn btn-secondary btn-sm">🔄 Refresh</button>
+      </div>
+
+      <!-- Moderation Queue Notice (For Teachers & Admins) -->
+      <div id="archiveModerationSection" class="hidden" style="margin-bottom: 1.5rem; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: var(--radius); padding: 1.25rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+          <h4 style="color: #1e40af;">🛡️ Archive Pending Review Queue</h4>
+          <span id="archivePendingBadge" class="badge badge-late">0 Pending</span>
+        </div>
+        <div id="archivePendingList">Loading moderation queue...</div>
+      </div>
+
+      <!-- Archive Cards Grid -->
+      <div id="archiveList">
+        <div style="text-align: center; padding: 2rem; color: var(--neutral-600);">Loading academic archive...</div>
       </div>
     </section>
   </main>
@@ -357,6 +538,226 @@
 
         <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center;">
           Create & Join as Leader
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: UPLOAD LEARNING MATERIAL -->
+  <div id="uploadMaterialModal" class="modal-overlay hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Upload Learning Resource</h3>
+        <button class="modal-close" onclick="closeModal('uploadMaterialModal')">&times;</button>
+      </div>
+
+      <form id="uploadMaterialForm">
+        <div style="margin-bottom: 1rem;">
+          <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Resource Title *</label>
+          <input type="text" id="matTitle" required style="width: 100%;" placeholder="e.g. Distributed Consensus & Raft Slides" />
+        </div>
+
+        <div style="margin-bottom: 1rem;">
+          <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Description</label>
+          <textarea id="matDescription" rows="2" style="width: 100%;" placeholder="Brief summary of topics covered..."></textarea>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+          <div>
+            <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Category *</label>
+            <select id="matCategory" required style="width: 100%;">
+              <option value="LECTURE_SLIDES">Lecture Slides</option>
+              <option value="LECTURE_NOTES">Lecture Notes</option>
+              <option value="PDF_BOOKS">PDF Textbooks</option>
+              <option value="REFERENCE_BOOKS">Reference Books</option>
+              <option value="PROGRAMMING_RESOURCES">Programming Tutorials</option>
+              <option value="LABORATORY_MATERIALS">Lab Guides</option>
+              <option value="TUTORIAL_SHEETS">Tutorial Sheets</option>
+              <option value="PREVIOUS_ASSIGNMENTS">Previous Assignments</option>
+              <option value="OTHER">Other Academic</option>
+            </select>
+          </div>
+
+          <div>
+            <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Target Course Offering *</label>
+            <select id="matCourseOfferingSelect" required style="width: 100%;">
+              <option value="">Select course...</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="margin-bottom: 1rem;">
+          <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Tags (comma separated)</label>
+          <input type="text" id="matTags" style="width: 100%;" placeholder="e.g. raft,paxos,cloud,lecture1" />
+        </div>
+
+        <div style="margin-bottom: 1.5rem;">
+          <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Resource File (PDF, PPTX, DOCX, Code, ZIP — Max 100MB) *</label>
+          <input type="file" id="matFileInput" required style="width: 100%;" />
+        </div>
+
+        <button type="submit" id="uploadMaterialSubmitBtn" class="btn btn-primary" style="width: 100%; justify-content: center;">
+          🚀 Publish Resource
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: MODERATE MATERIAL -->
+  <div id="moderateMaterialModal" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width: 500px;">
+      <div class="modal-header">
+        <h3>Moderate Learning Resource</h3>
+        <button class="modal-close" onclick="closeModal('moderateMaterialModal')">&times;</button>
+      </div>
+
+      <div id="modMaterialDetails" style="margin-bottom: 1rem;"></div>
+
+      <form id="moderateMaterialForm">
+        <input type="hidden" id="modMaterialId" />
+
+        <div style="margin-bottom: 1rem;">
+          <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Moderation Action *</label>
+          <select id="modActionSelect" required style="width: 100%;">
+            <option value="APPROVED">✅ Approve & Publish to Students</option>
+            <option value="REJECTED">❌ Reject Resource</option>
+            <option value="ARCHIVED">📦 Archive</option>
+          </select>
+        </div>
+
+        <div style="margin-bottom: 1.5rem;">
+          <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Review Note / Rejection Reason</label>
+          <textarea id="modNoteInput" rows="3" style="width: 100%;" placeholder="Feedback or reason for decision..."></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-success" style="width: 100%; justify-content: center;">
+          Confirm Moderation Decision
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: UPLOAD ARCHIVE RESOURCE -->
+  <div id="uploadArchiveModal" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width: 580px;">
+      <div class="modal-header">
+        <h3>Contribute to Academic Archive</h3>
+        <button class="modal-close" onclick="closeModal('uploadArchiveModal')">&times;</button>
+      </div>
+
+      <form id="uploadArchiveForm">
+        <div style="margin-bottom: 1rem;">
+          <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Title / Assessment Name *</label>
+          <input type="text" id="arcTitle" required style="width: 100%;" placeholder="e.g. Distributed Systems Final Exam 2023 with Solutions" />
+        </div>
+
+        <div style="margin-bottom: 1rem;">
+          <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Description / Context</label>
+          <textarea id="arcDescription" rows="2" style="width: 100%;" placeholder="Brief outline, professor name, exam instructions, topics covered..."></textarea>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+          <div>
+            <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Archive Category *</label>
+            <select id="arcResourceTypeSelect" required style="width: 100%;">
+              <option value="PAST_EXAM">📝 Past Exam Paper</option>
+              <option value="PROJECT">💻 Student / Graduation Project</option>
+              <option value="SOLUTION">💡 Solutions & Answer Key</option>
+              <option value="REFERENCE">📚 Reference Implementation</option>
+            </select>
+          </div>
+
+          <div>
+            <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Assessment Type</label>
+            <select id="arcAssessmentTypeSelect" style="width: 100%;">
+              <option value="MIDTERM">Midterm Exam</option>
+              <option value="FINAL">Final Exam</option>
+              <option value="QUIZ">Quiz / Test</option>
+              <option value="LAB_EXAM">Lab / Practical Exam</option>
+              <option value="GRADUATION_PROJECT">Graduation Project</option>
+              <option value="TERM_PROJECT">Term Project</option>
+              <option value="ASSIGNMENT">Assignment</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+          <div>
+            <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Exam / Project Year</label>
+            <input type="number" id="arcExamYear" min="2000" max="2035" style="width: 100%;" placeholder="e.g. 2024" />
+          </div>
+
+          <div>
+            <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Target Course Offering *</label>
+            <select id="arcCourseOfferingSelect" required style="width: 100%;">
+              <option value="">Select course...</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="arcOfficialWrapper" style="margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; background: #f8fafc; padding: 0.75rem; border-radius: var(--radius); border: 1px solid var(--neutral-200);">
+          <input type="checkbox" id="arcIsOfficial" style="width: 1.15rem; height: 1.15rem;" />
+          <div>
+            <label for="arcIsOfficial" style="font-weight: 600; cursor: pointer;">⭐ Certify as Official Instructor / Department Solution</label>
+            <p style="font-size: 0.75rem; color: var(--neutral-600); margin: 0;">Authorized instructors & admins only. Student contributions are kept as references.</p>
+          </div>
+        </div>
+
+        <div style="margin-bottom: 1rem;">
+          <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Tags (comma separated)</label>
+          <input type="text" id="arcTags" style="width: 100%;" placeholder="e.g. final,2023,solutions,paxos" />
+        </div>
+
+        <div style="margin-bottom: 1.5rem;">
+          <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">File (PDF, PPTX, DOCX, ZIP Archives, Code — Max 100MB) *</label>
+          <input type="file" id="arcFileInput" required style="width: 100%;" />
+        </div>
+
+        <button type="submit" id="uploadArchiveSubmitBtn" class="btn btn-primary" style="width: 100%; justify-content: center;">
+          🚀 Submit to Archive
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: MODERATE ARCHIVE RESOURCE -->
+  <div id="moderateArchiveModal" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width: 500px;">
+      <div class="modal-header">
+        <h3>Moderate Archive Submission</h3>
+        <button class="modal-close" onclick="closeModal('moderateArchiveModal')">&times;</button>
+      </div>
+
+      <div id="modArchiveDetails" style="margin-bottom: 1rem;"></div>
+
+      <form id="moderateArchiveForm">
+        <input type="hidden" id="modArchiveId" />
+
+        <div style="margin-bottom: 1rem;">
+          <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Moderation Action *</label>
+          <select id="modArchiveDecision" required style="width: 100%;">
+            <option value="APPROVE">✅ Approve & Publish to Archive</option>
+            <option value="REJECT">❌ Reject Submission</option>
+            <option value="ARCHIVE">📦 Archive Resource</option>
+          </select>
+        </div>
+
+        <div style="margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; background: #f8fafc; padding: 0.75rem; border-radius: var(--radius); border: 1px solid var(--neutral-200);">
+          <input type="checkbox" id="modArchiveIsOfficial" style="width: 1.15rem; height: 1.15rem;" />
+          <div>
+            <label for="modArchiveIsOfficial" style="font-weight: 600; cursor: pointer;">⭐ Mark as Official Solution / Answer Key</label>
+            <p style="font-size: 0.75rem; color: var(--neutral-600); margin: 0;">Verified instructor or department solution</p>
+          </div>
+        </div>
+
+        <div style="margin-bottom: 1.5rem;">
+          <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Moderation Note / Rejection Reason</label>
+          <textarea id="modArchiveNote" rows="3" style="width: 100%;" placeholder="Feedback or note for student..."></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-success" style="width: 100%; justify-content: center;">
+          Confirm Archive Moderation
         </button>
       </form>
     </div>
