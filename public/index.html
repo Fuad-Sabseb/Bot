@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Campus Super App — Academic Portal</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+
+  <!-- Navigation Bar -->
+  <header>
+    <div class="nav-container">
+      <a href="/" class="brand">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+          <path d="M6 12v5c3 3 9 3 12 0v-5"/>
+        </svg>
+        <span>Campus Super App</span>
+        <span class="brand-badge">Academic Ecosystem</span>
+      </a>
+
+      <div class="header-actions">
+        <!-- Live Auth Status -->
+        <div id="authStatusContainer" style="display: flex; align-items: center; gap: 0.5rem;">
+          <span id="userDisplayName" style="font-size: 0.85rem; font-weight: 600; color: var(--neutral-800);">Guest</span>
+          <button id="openAuthModalBtn" class="btn btn-secondary btn-sm">🔑 Login / Switch</button>
+        </div>
+
+        <!-- Notification Bell -->
+        <div style="position: relative;">
+          <button id="notifBellBtn" class="btn btn-secondary btn-sm" title="Notifications">
+            🔔 <span id="notifBadge" class="brand-badge" style="background: var(--danger); color: white; display: none;">0</span>
+          </button>
+
+          <!-- Notification Dropdown -->
+          <div id="notifDropdown" class="notifications-dropdown">
+            <div style="padding: 0.75rem 1rem; border-bottom: 1px solid var(--neutral-200); display: flex; justify-content: space-between; align-items: center;">
+              <strong>Notifications</strong>
+              <button id="markAllReadBtn" class="btn btn-sm btn-secondary" style="font-size: 0.75rem;">Mark All Read</button>
+            </div>
+            <div id="notifList">
+              <div style="padding: 1rem; text-align: center; color: var(--neutral-600);">No notifications</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main>
+    <!-- Navigation Tabs -->
+    <nav class="tabs-nav">
+      <button class="tab-btn active" data-tab="dashboard">
+        📋 Student Assignment Dashboard
+      </button>
+      <button class="tab-btn" data-tab="groups">
+        👥 Assignment Groups
+      </button>
+      <button class="tab-btn" data-tab="teacher">
+        🎓 Teacher Grading & Management
+      </button>
+    </nav>
+
+    <!-- TAB 1: STUDENT ASSIGNMENT DASHBOARD -->
+    <section id="tab-dashboard" class="tab-content">
+      <!-- Metrics -->
+      <div class="dashboard-metrics">
+        <div class="metric-card">
+          <div class="metric-number" id="metricTotal">0</div>
+          <div class="metric-label">Total Assignments</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-number" id="metricUpcoming" style="color: var(--accent);">0</div>
+          <div class="metric-label">Upcoming Due</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-number" id="metricSubmitted" style="color: var(--success);">0</div>
+          <div class="metric-label">Submitted</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-number" id="metricOverdue" style="color: var(--danger);">0</div>
+          <div class="metric-label">Overdue</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-number" id="metricGraded" style="color: #8b5cf6;">0</div>
+          <div class="metric-label">Graded</div>
+        </div>
+      </div>
+
+      <!-- Filter Bar -->
+      <div class="filter-bar">
+        <div class="filter-group">
+          <label style="font-weight: 600; font-size: 0.9rem;">Status Filter:</label>
+          <select id="statusFilter">
+            <option value="ALL">All Categories</option>
+            <option value="UPCOMING">Upcoming / Due Soon</option>
+            <option value="SUBMITTED">Submitted</option>
+            <option value="OVERDUE">Overdue</option>
+            <option value="GRADED">Graded</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label style="font-weight: 600; font-size: 0.9rem;">Type:</label>
+          <select id="typeFilter">
+            <option value="ALL">All Types</option>
+            <option value="INDIVIDUAL">Individual</option>
+            <option value="GROUP">Group</option>
+          </select>
+        </div>
+
+        <button id="refreshDashboardBtn" class="btn btn-secondary btn-sm">🔄 Refresh</button>
+      </div>
+
+      <!-- Assignment Cards Container -->
+      <div id="assignmentsList">
+        <div style="text-align: center; padding: 2rem; color: var(--neutral-600);">Loading assignments...</div>
+      </div>
+    </section>
+
+    <!-- TAB 2: ASSIGNMENT GROUPS -->
+    <section id="tab-groups" class="tab-content hidden">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+        <div>
+          <h2>Group Collaboration Hub</h2>
+          <p style="color: var(--neutral-600); font-size: 0.9rem;">Form or join a team for group assignments before submission.</p>
+        </div>
+        <button id="openCreateGroupBtn" class="btn btn-primary">➕ Create New Group</button>
+      </div>
+
+      <div class="filter-bar">
+        <div class="filter-group">
+          <label style="font-weight: 600;">Select Group Assignment:</label>
+          <select id="groupAssignmentSelect">
+            <option value="">Select an assignment...</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="groupsList">
+        <div style="text-align: center; padding: 2rem; color: var(--neutral-600);">Select an assignment to view or form teams.</div>
+      </div>
+    </section>
+
+    <!-- TAB 3: TEACHER GRADING & MANAGEMENT -->
+    <section id="tab-teacher" class="tab-content hidden">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+        <div>
+          <h2>Course Instructor & Grading Console</h2>
+          <p style="color: var(--neutral-600); font-size: 0.9rem;">Publish assignments, manage deadlines, and grade student submissions.</p>
+        </div>
+        <button id="openCreateAssignmentModalBtn" class="btn btn-primary">➕ Create Assignment</button>
+      </div>
+
+      <div class="filter-bar">
+        <div class="filter-group">
+          <label style="font-weight: 600;">Course Offering:</label>
+          <select id="teacherOfferingSelect">
+            <option value="">Select course offering...</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Teacher Submissions Table -->
+      <div id="teacherSubmissionsSection" style="background: white; border-radius: var(--radius); padding: 1.5rem; border: 1px solid var(--neutral-200); box-shadow: var(--shadow);">
+        <h3 style="margin-bottom: 1rem;">Student Submissions For Review</h3>
+        <div id="submissionsTableContainer">
+          <p style="color: var(--neutral-600);">Select a course offering to view assignments and student submissions.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- MODAL: LOGIN / AUTHENTICATION -->
+  <div id="authModal" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width: 480px;">
+      <div class="modal-header">
+        <h3>User Authentication</h3>
+        <button class="modal-close" onclick="closeModal('authModal')">&times;</button>
+      </div>
+
+      <!-- Form Login -->
+      <form id="loginForm" style="margin-bottom: 1.5rem;">
+        <div style="margin-bottom: 1rem;">
+          <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Campus ID or Email</label>
+          <input type="text" id="loginIdentifier" required style="width: 100%;" placeholder="e.g. RU0008/17 or user@university.edu" />
+        </div>
+
+        <div style="margin-bottom: 1rem;">
+          <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Password</label>
+          <input type="password" id="loginPassword" required style="width: 100%;" placeholder="Enter password" />
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center;">
+          Log In
+        </button>
+      </form>
+
+      <hr style="border: 0; border-top: 1px solid var(--neutral-200); margin: 1.25rem 0;" />
+
+      <div>
+        <p style="font-size: 0.85rem; font-weight: 600; color: var(--neutral-600); margin-bottom: 0.5rem;">Or paste existing Bearer Access Token:</p>
+        <div style="display: flex; gap: 0.5rem;">
+          <input type="text" id="manualTokenInput" placeholder="eyJhbGciOi..." style="flex: 1;" />
+          <button id="saveManualTokenBtn" class="btn btn-secondary btn-sm">Use Token</button>
+        </div>
+      </div>
+
+      <div style="margin-top: 1.25rem; text-align: center;">
+        <button id="logoutBtn" class="btn btn-danger btn-sm" style="display: none;">Logout</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: SUBMISSION & VERSION HISTORY -->
+  <div id="submissionModal" class="modal-overlay hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="subModalTitle">Submit Assignment</h3>
+        <button class="modal-close" onclick="closeModal('submissionModal')">&times;</button>
+      </div>
+
+      <div id="subModalDetails" style="margin-bottom: 1rem;">
+        <!-- Assignment details populated by JS -->
+      </div>
+
+      <!-- Drag & Drop Zone -->
+      <div id="dropZone" class="upload-zone">
+        <p style="font-size: 1.5rem; margin-bottom: 0.5rem;">📁</p>
+        <p style="font-weight: 600;">Drag and drop your file here, or click to browse</p>
+        <p style="font-size: 0.8rem; color: var(--neutral-600); margin-top: 0.25rem;">Supports PDF, DOCX, ZIP, code archives (Max 50MB)</p>
+        <input type="file" id="submissionFileInput" style="display: none;" />
+        <p id="selectedFileName" style="font-weight: 600; color: var(--accent); margin-top: 0.5rem; display: none;"></p>
+      </div>
+
+      <button id="submitFileBtn" class="btn btn-success" style="width: 100%; justify-content: center;" disabled>
+        🚀 Confirm & Upload Submission
+      </button>
+
+      <!-- Version History -->
+      <div style="margin-top: 1.5rem;">
+        <h4>Submission Version History</h4>
+        <div id="versionHistoryTable">
+          <p style="color: var(--neutral-600); font-size: 0.85rem; margin-top: 0.5rem;">No submissions recorded yet.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CREATE ASSIGNMENT -->
+  <div id="createAssignmentModal" class="modal-overlay hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Create New Assignment</h3>
+        <button class="modal-close" onclick="closeModal('createAssignmentModal')">&times;</button>
+      </div>
+
+      <form id="createAssignmentForm">
+        <div style="margin-bottom: 1rem;">
+          <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Title *</label>
+          <input type="text" id="newTitle" required style="width: 100%;" placeholder="e.g. Distributed Key-Value Store" />
+        </div>
+
+        <div style="margin-bottom: 1rem;">
+          <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Description *</label>
+          <textarea id="newDescription" required rows="3" style="width: 100%;" placeholder="Summary of assignment objectives..."></textarea>
+        </div>
+
+        <div style="margin-bottom: 1rem;">
+          <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Detailed Instructions</label>
+          <textarea id="newInstructions" rows="3" style="width: 100%;" placeholder="Step-by-step submission guidelines..."></textarea>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+          <div>
+            <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Type</label>
+            <select id="newType" style="width: 100%;">
+              <option value="INDIVIDUAL">Individual</option>
+              <option value="GROUP">Group Project</option>
+            </select>
+          </div>
+          <div>
+            <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Max Marks</label>
+            <input type="number" id="newMaxMarks" value="100" style="width: 100%;" />
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+          <div>
+            <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Submission Due Date *</label>
+            <input type="datetime-local" id="newDueDate" required style="width: 100%;" />
+          </div>
+          <div>
+            <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Hard Cutoff Date</label>
+            <input type="datetime-local" id="newCutoffDate" style="width: 100%;" />
+          </div>
+        </div>
+
+        <div style="margin-bottom: 1.5rem;">
+          <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Attach Reference Materials (PDF/DOCX/ZIP)</label>
+          <input type="file" id="newAttachments" multiple style="width: 100%;" />
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center;">
+          Publish Assignment
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: GRADE SUBMISSION -->
+  <div id="gradeModal" class="modal-overlay hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Grade Student Submission</h3>
+        <button class="modal-close" onclick="closeModal('gradeModal')">&times;</button>
+      </div>
+
+      <div id="gradeModalDetails" style="margin-bottom: 1rem;"></div>
+
+      <form id="gradeForm">
+        <input type="hidden" id="gradeSubmissionId" />
+        <input type="hidden" id="gradeAssignmentId" />
+
+        <div style="margin-bottom: 1rem;">
+          <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Score Awarded *</label>
+          <input type="number" step="0.5" id="gradeScoreInput" required style="width: 100%; font-size: 1.25rem;" />
+        </div>
+
+        <div style="margin-bottom: 1.5rem;">
+          <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Written Feedback & Comments</label>
+          <textarea id="gradeFeedbackInput" rows="4" style="width: 100%;" placeholder="Detailed feedback for the student..."></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-success" style="width: 100%; justify-content: center;">
+          💾 Save Grade & Notify Student
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: CREATE GROUP -->
+  <div id="createGroupModal" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width: 450px;">
+      <div class="modal-header">
+        <h3>Create Assignment Group</h3>
+        <button class="modal-close" onclick="closeModal('createGroupModal')">&times;</button>
+      </div>
+
+      <form id="createGroupForm">
+        <div style="margin-bottom: 1.5rem;">
+          <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Group / Team Name *</label>
+          <input type="text" id="newGroupName" required style="width: 100%;" placeholder="e.g. Distributed Pioneers" />
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center;">
+          Create & Join as Leader
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <script src="/js/app.js"></script>
+</body>
+</html>

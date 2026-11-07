@@ -283,4 +283,43 @@ export class ReminderService {
 
     return { processed, sent, cancelled };
   }
+
+  private static workerInterval: NodeJS.Timeout | null = null;
+
+  /**
+   * Start recurring background reminder worker.
+   */
+  static startBackgroundReminderWorker(intervalMs: number = 60000): NodeJS.Timeout {
+    if (this.workerInterval) {
+      return this.workerInterval;
+    }
+
+    console.log(`⏱️ Automatic background deadline reminder worker started (Interval: ${intervalMs / 1000}s).`);
+
+    this.workerInterval = setInterval(async () => {
+      try {
+        const stats = await this.processDueReminders();
+        if (stats.processed > 0) {
+          console.log(
+            `🔔 [DeadlineReminders] Processed ${stats.processed} reminders (${stats.sent} sent, ${stats.cancelled} cancelled).`
+          );
+        }
+      } catch (err: any) {
+        console.error("❌ [DeadlineReminders] Background reminder worker encountered error:", err.message);
+      }
+    }, intervalMs);
+
+    return this.workerInterval;
+  }
+
+  /**
+   * Stop recurring background reminder worker.
+   */
+  static stopBackgroundReminderWorker(): void {
+    if (this.workerInterval) {
+      clearInterval(this.workerInterval);
+      this.workerInterval = null;
+      console.log("🛑 Automatic background deadline reminder worker stopped.");
+    }
+  }
 }

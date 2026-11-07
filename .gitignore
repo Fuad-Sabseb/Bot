@@ -18,10 +18,10 @@ Thumbs.db
 .vscode/
 .idea/
 
-# Local runtime data, text databases & logs
+# Local runtime data, text databases & logs (use leading slashes for exact root folders)
 *.txt
 !README.md
-storage/
-assignments/
-legacy_data/
+/storage/
+/assignments/
+/legacy_data/
 migration-report.json

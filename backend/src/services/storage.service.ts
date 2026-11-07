@@ -49,13 +49,18 @@ export class StorageService {
   }
 
   /**
-   * Resolve absolute path for a stored fileKey and verify it remains within storage root.
+   * Resolve absolute path for a stored fileKey and verify it remains strictly within storage root.
    */
   static getFilePath(fileKey: string): string {
-    const normalized = path.normalize(fileKey).replace(/^(\.\.(\/|\\|$))+/, "");
-    const fullPath = path.join(this.basePath, normalized);
+    if (!fileKey || typeof fileKey !== "string") {
+      throw new Error("ACCESS_DENIED: Invalid file key");
+    }
 
-    if (!fullPath.startsWith(this.basePath)) {
+    const safeKey = fileKey.replace(/^\/+/, "");
+    const fullPath = path.resolve(this.basePath, safeKey);
+    const relative = path.relative(this.basePath, fullPath);
+
+    if (relative === "" || relative.startsWith("..") || path.isAbsolute(relative)) {
       throw new Error("ACCESS_DENIED: Path traversal detected");
     }
 

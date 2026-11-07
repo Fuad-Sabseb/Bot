@@ -2,6 +2,7 @@ import { prisma } from "../../database/prisma";
 import { AssignmentType, SubmissionLifecycleStatus, NotificationType } from "@prisma/client";
 import { StorageService, StoredFileMeta } from "../../services/storage.service";
 import { ReminderService } from "../../services/reminder.service";
+import { sendTelegramNotification } from "../telegram/bot";
 
 export interface CreateAssignmentInput {
   courseOfferingId: string;
@@ -187,6 +188,20 @@ export class AssignmentsService {
           link: `/assignments/${assignment.id}`,
         },
       });
+
+      const user = await prisma.user.findUnique({
+        where: { id: enrollment.userId },
+        include: { notificationPref: true },
+      });
+      if (user?.telegramChatId && (user.notificationPref?.channelTelegram ?? true)) {
+        await sendTelegramNotification(
+          user.telegramChatId,
+          `📝 *New Assignment Posted: ${assignment.title}*\n\n` +
+            `Due Date: *${assignment.dueDate.toUTCString()}*\n` +
+            `Type: ${assignment.type}\n\n` +
+            `Access the academic portal to view specifications and attachments.`
+        );
+      }
     }
 
     return this.getAssignmentById(assignment.id, creatorId);
@@ -250,6 +265,19 @@ export class AssignmentsService {
             link: `/assignments/${assignmentId}`,
           },
         });
+
+        const user = await prisma.user.findUnique({
+          where: { id: e.userId },
+          include: { notificationPref: true },
+        });
+        if (user?.telegramChatId && (user.notificationPref?.channelTelegram ?? true)) {
+          await sendTelegramNotification(
+            user.telegramChatId,
+            `⏰ *Deadline Extended: ${updated.title}*\n\n` +
+              `New Due Date: *${updated.dueDate.toUTCString()}*\n\n` +
+              `Please ensure your submission is finalized before the updated cutoff.`
+          );
+        }
       }
     }
 
@@ -1034,6 +1062,20 @@ export class AssignmentsService {
           link: `/assignments/${submission.assignmentId}`,
         },
       });
+
+      const user = await prisma.user.findUnique({
+        where: { id: recipientId },
+        include: { notificationPref: true },
+      });
+      if (user?.telegramChatId && (user.notificationPref?.channelTelegram ?? true)) {
+        await sendTelegramNotification(
+          user.telegramChatId,
+          `📊 *Grade Released: ${submission.assignment.title}*\n\n` +
+            `Your score: *${grade}/${submission.assignment.maxMarks ?? "N/A"}*\n` +
+            (feedback ? `Feedback: _"${feedback}"_\n` : "") +
+            `View complete grading details on the academic portal.`
+        );
+      }
     }
 
     return updated;
