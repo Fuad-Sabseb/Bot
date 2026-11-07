@@ -1,8 +1,15 @@
 import express, { Application, Request, Response } from "express";
+import fs from "fs";
+import path from "path";
 import helmet from "helmet";
 import cors from "cors";
 import cookieParser from "cookie-parser";
 import authRoutes from "./modules/auth/auth.routes";
+import usersRoutes from "./modules/users/users.routes";
+import academicRoutes from "./modules/academic/academic.routes";
+import dashboardRoutes from "./modules/dashboard/dashboard.routes";
+import assignmentsRoutes from "./modules/assignments/assignments.routes";
+import notificationsRoutes from "./modules/notifications/notifications.routes";
 import { errorHandler } from "./middleware/error.middleware";
 import { csrfProtection } from "./middleware/csrf.middleware";
 import { authenticate } from "./middleware/auth.middleware";
@@ -55,6 +62,11 @@ export function createApp(): Application {
   const v1Router = express.Router();
 
   v1Router.use("/auth", authRoutes);
+  v1Router.use("/users", usersRoutes);
+  v1Router.use("/academic", academicRoutes);
+  v1Router.use("/dashboard", dashboardRoutes);
+  v1Router.use("/assignments", assignmentsRoutes);
+  v1Router.use("/notifications", notificationsRoutes);
 
   // Protected Profile Route (Test & Verification)
   v1Router.get("/auth/me", authenticate, (req: Request, res: Response) => {
@@ -79,7 +91,19 @@ export function createApp(): Application {
 
   app.use("/api/v1", v1Router);
 
-  // 7. Centralized Error Handler
+  // 7. Static Web Client Interface (Assignment Dashboard, Submission & Grading)
+  const publicDir = path.resolve(process.cwd(), "public");
+  if (fs.existsSync(publicDir)) {
+    app.use(express.static(publicDir));
+    app.get("*", (req: Request, res: Response, next) => {
+      if (req.path.startsWith("/api") || req.path === "/health") {
+        return next();
+      }
+      res.sendFile(path.join(publicDir, "index.html"));
+    });
+  }
+
+  // 8. Centralized Error Handler
   app.use(errorHandler);
 
   return app;

@@ -1,0 +1,292 @@
+# Campus Super App — Backend & Telegram Bot Ecosystem
+**Phase 1 Foundation: PostgreSQL 16, Prisma ORM, Scoped RBAC, Cryptographic Authentication, and Refactored Telegram Bot Engine**
+
+---
+
+## 1. Executive Overview
+
+The **Campus Super App** transforms an existing standalone Telegram script into a modern, resilient, multi-tiered digital university learning and class management platform.
+
+### Phase 1 Core Capabilities Implemented:
+- **Database Engine**: Dedicated PostgreSQL 16 relational database with compiled `pgvector` support, custom XOR owner constraints, and partial unique indexes.
+- **Data Preservation**: 100% byte-for-byte SHA-256 backup of original legacy files into `legacy_data/` with an automated, idempotent migration engine.
+- **Authentication & Security**: Bcrypt password hashing, short-lived JWT access tokens (15m), and cryptographic refresh token rotation with a 10-second AES-256-GCM encrypted grace window for concurrent browser tab requests.
+- **Replay Attack Defense**: Automatic revocation of entire token families and active sessions upon detection of compromised or expired token replay.
+- **Scoped RBAC**: Centralized authorization middleware supporting multi-role hierarchies across Global (`ADMIN`, `USER`), Class cohort (`CLASS_REP`, `STUDENT`), and Course offering (`LEAD_INSTRUCTOR`, `INSTRUCTOR`, `TA`, `STUDENT`) boundaries.
+- **Refactored Telegram Bot**: Modular architecture with persistent conversation state, exact Campus ID matching, rate-limiting, and server-side administrative access control.
+
+---
+
+## 2. Directory Structure
+
+```
+Bot/
+├── .env.example                       # Documented environment variable template
+├── .gitignore                         # Strict exclusion of secrets and build artifacts
+├── jest.config.js                     # Unified test runner configuration
+├── package.json                       # Scripts and production/dev dependencies
+├── bot.js                             # Original bot entrypoint sanitized of secrets
+├── legacy_data/                       # Immutable byte-for-byte legacy backup
+│   ├── checksums.json                 # SHA-256 integrity verification manifest
+│   ├── campus_id.txt
+│   ├── used_ids.txt
+│   ├── students.txt
+│   └── feedback.txt
+├── storage/                           # Persistent local object storage
+│   ├── uploads/
+│   ├── materials/
+│   ├── archives/
+│   └── assignments/
+│       ├── individual/
+│       └── group/
+└── backend/
+    ├── tsconfig.json                  # Strict TypeScript configuration
+    ├── migration-report.json          # Empirical migration reconciliation audit
+    ├── prisma/
+    │   ├── schema.prisma              # Complete normalized schema definition
+    │   └── migrations/
+    │       └── 20261106183253_init/   # Versioned PostgreSQL migration with custom SQL
+    ├── src/
+    │   ├── app.ts                     # Express app setup (Helmet, CORS, CSRF, JSON)
+    │   ├── server.ts                  # HTTP & Bot bootstrap coordinator
+    │   ├── config/
+    │   │   └── env.ts                 # Enforced Zod schema environment validation
+    │   ├── database/
+    │   │   └── prisma.ts              # Singleton Prisma client
+    │   ├── middleware/
+    │   │   ├── auth.middleware.ts     # Bearer JWT verification & session loader
+    │   │   ├── rbac.middleware.ts     # Global, Class, and Course scope authorization
+    │   │   ├── csrf.middleware.ts     # Double-Submit Cookie defense
+    │   │   ├── rateLimiter.ts         # IP sliding-window brute-force limiter
+    │   │   └── error.middleware.ts    # Centralized error handler with redaction
+    │   ├── modules/
+    │   │   ├── auth/                  # Authentication routes, controllers, and services
+    │   │   └── telegram/              # Refactored modular Telegram Bot engine
+    │   │       ├── bot.ts             # Bot lifecycle coordinator
+    │   │       ├── state.ts           # Conversation state manager
+    │   │       ├── keyboards.ts       # Reusable inline keyboard builders
+    │   │       └── handlers/          # Modular command & callback dispatchers
+    │   ├── types/
+    │   │   └── auth.ts                # TypeScript type augmentations
+    │   └── utils/
+    │       ├── crypto.ts              # AES-256-GCM & Bcrypt helpers
+    │       └── jwt.ts                 # JWT signing and verification
+    ├── scripts/
+    │   └── migrate-legacy.ts          # Idempotent legacy data importer
+    └── tests/
+        ├── database.test.ts           # PostgreSQL constraints & partial indexes
+        ├── migration.test.ts          # Migration idempotency & reconciliation
+        ├── auth.test.ts               # Registration, rotation & replay defense
+        ├── rbac.test.ts               # Role enforcement & cross-scope protection
+        └── telegram.test.ts           # Bot commands, security & path traversal tests
+```
+
+---
+
+## 3. Database Architecture & Setup
+
+### 3.1 Local PostgreSQL 16 Prerequisites
+1. **Start PostgreSQL 16 service**:
+   ```bash
+   brew services start postgresql@16
+   ```
+2. **Create databases**:
+   ```bash
+   /opt/homebrew/opt/postgresql@16/bin/createdb -h 127.0.0.1 -p 5432 campus_app
+   /opt/homebrew/opt/postgresql@16/bin/createdb -h 127.0.0.1 -p 5432 campus_app_test
+   ```
+3. **Enable pgvector extension**:
+   ```bash
+   /opt/homebrew/opt/postgresql@16/bin/psql -h 127.0.0.1 -d campus_app -c "CREATE EXTENSION IF NOT EXISTS vector;"
+   /opt/homebrew/opt/postgresql@16/bin/psql -h 127.0.0.1 -d campus_app_test -c "CREATE EXTENSION IF NOT EXISTS vector;"
+   ```
+
+### 3.2 Applying Migrations
+Apply versioned migrations to the active database:
+```bash
+npm run prisma:migrate
+```
+To generate the Prisma Client after schema changes:
+```bash
+npm run prisma:generate
+```
+
+### 3.3 Custom PostgreSQL Constraints & Partial Indexes
+Custom constraints in `backend/prisma/migrations/20261106183253_init/migration.sql`:
+1. `chk_submission_owner_exclusivity`: Enforces XOR ownership on `AssignmentSubmission`. A submission must belong to **either** a student (`studentId IS NOT NULL`) **or** a group (`groupId IS NOT NULL`).
+2. `idx_current_individual_submission`: Partial unique index on `("assignmentId", "studentId") WHERE "isCurrentVersion" = TRUE`.
+3. `idx_current_group_submission`: Partial unique index on `("assignmentId", "groupId") WHERE "isCurrentVersion" = TRUE`.
+4. `idx_single_current_academic_year`: Enforces at most one active year across the institution.
+5. `idx_single_current_semester`: Enforces at most one active semester across the institution.
+6. Positive numeric checks on marks and group sizes.
+
+---
+
+## 4. Legacy Data Migration & Reconciliation
+
+The migration script (`backend/scripts/migrate-legacy.ts`) parses the original legacy files and executes an idempotent, transactional ingestion into PostgreSQL.
+
+### Execution:
+```bash
+npm run migrate:legacy
+```
+
+### Verified Audit Metrics (`backend/migration-report.json`):
+- `campus_id.txt`: 99 raw lines $\rightarrow$ **97 unique IDs** imported (2 duplicates logged: `RU0008/17` at lines 1 & 47; `RU0708/17` at lines 73 & 99).
+- `used_ids.txt`: 36 raw lines $\rightarrow$ **34 unique IDs** flagged as `isUsed = true` (1 duplicate logged: `RU0908/17` at lines 1 & 15).
+- `students.txt`: 31 unique records verified. All 31 exist in `used_ids.txt`. (3 used IDs absent from `students.txt`: `RU0021/17`, `RU0909/17`, `RU0316/17` — properly reconciled and flagged as used in `CampusIdRegistry`).
+- `feedback.txt`: 6 non-empty lines $\rightarrow$ **5 unique feedbacks** imported (1 duplicate logged: `User 5999909651: /start`).
+
+---
+
+## 5. Authentication, Token Rotation & Threat Model
+
+### 5.1 Token Lifecycle
+- **Access Tokens**: Signed with `JWT_ACCESS_SECRET`, 15-minute lifespan.
+- **Refresh Tokens**: Cryptographically random 48-byte hex tokens, stored in database strictly as SHA-256 hashes with a 7-day expiration.
+
+### 5.2 Concurrent Rotation & 10-Second Grace Cache
+To prevent false-positive logouts when multiple browser tabs fire parallel refresh requests:
+1. When `/api/v1/auth/refresh` receives token $R_1$, it acquires a PostgreSQL row lock (`SELECT ... FOR UPDATE`) on the `Session`.
+2. $R_1$ is marked `isRevoked = true`.
+3. A new token pair $(A_2, R_2)$ is minted.
+4. The response payload is encrypted with AES-256-GCM using an ephemeral server encryption key and the `sessionId` as Additional Authenticated Data (AAD).
+5. The ciphertext is saved in `Session.rotationCiphertext` with `rotationGraceUntil = now() + 10s`.
+6. Any parallel request presenting $R_1$ within 10 seconds decrypts and returns $(A_2, R_2)$.
+
+### 5.3 Bounded Replay Threat Model
+- If $R_1$ is submitted **after** the 10-second grace window, the server detects a token theft / replay attack.
+- The server instantly marks all refresh tokens in that `familyId` as revoked and invalidates the session (`isRevoked = true`), terminating all active connections.
+
+---
+
+## 6. Scoped Role-Based Access Control (RBAC)
+
+Authorization is enforced server-side via `backend/src/middleware/rbac.middleware.ts`:
+
+| Role Scope | Permitted Roles | Enforcement Mechanism |
+| :--- | :--- | :--- |
+| **Global** | `ADMIN`, `USER` | `requireGlobalRole("ADMIN")` validates institutional administrative privileges. |
+| **Class** | `CLASS_REP`, `STUDENT` | `requireClassRole(req => req.params.classId, "CLASS_REP")` checks cohort scope. Global `ADMIN` automatically bypasses class checks. |
+| **Course** | `LEAD_INSTRUCTOR`, `INSTRUCTOR`, `TA`, `STUDENT` | `requireCourseRole(req => req.params.offeringId, "INSTRUCTOR")` checks offering scope. |
+
+---
+
+## 7. Telegram Bot Operations
+
+### Security Hardening:
+- **Zero Exposed Secrets**: Bot token fallback eliminated from source code. Must be provided via `TELEGRAM_BOT_TOKEN`.
+- **Exact Campus ID Matching**: Eliminates the previous substring bug (`"008"` or `"RU"` no longer matches).
+- **Authorized Broadcasts**: Announcement callbacks strictly require `ADMIN` privileges verified in PostgreSQL.
+- **Path Traversal Protection**: Uploaded files use sanitized base names with UUID prefixes.
+
+### Running the Services:
+- Start API Server & Telegram Bot:
+  ```bash
+  npm run dev
+  ```
+- Build for Production:
+  ```bash
+  npm run build
+  npm start
+  ```
+
+---
+
+## 8. Verification & Test Suite
+
+Run the full automated test suite against the PostgreSQL test database:
+```bash
+npm test
+```
+
+### Test Coverage (74/74 Tests Passing):
+1. `database.test.ts` (7 tests): XOR submission checks, active version uniqueness, single current academic year/semester, positive numeric rules.
+2. `migration.test.ts` (4 tests): Reconciliation of 97 IDs and 5 feedbacks, second-run idempotency, exact matching, SHA-256 manifest.
+3. `auth.test.ts` (7 tests): Registration, duplicate ID prevention, invalid credentials, token rotation, 10-second grace window, replay detection.
+4. `rbac.test.ts` (3 tests): Admin access, student access denial, unauthenticated request rejection.
+5. `telegram.test.ts` (9 tests): Substring rejection, one-time invite generation, feedback persistence, announcement access denial, real-time admin statistics, safe filename sanitization.
+6. `phase2.academic.test.ts` (17 tests): Academic year/semester creation and switching, class cohorts, course catalog, course offerings, instructor assignments, student individual and batch class enrollments, teacher provisioning, class rep promotion, user suspension session revocation, Telegram OTP account-linking, and contextual role-based dashboards (Admin, Teacher, Class Rep, Student).
+7. `phase3.assignments.test.ts` (27 tests): Assignment creation with attachments, deadline and cutoff validations, role scoping (Teacher vs Class Rep vs Student), student assignment dashboard with countdowns and status filters, individual submissions with collision-free storage and SHA-256, resubmission versioning (v1 archived, v2 current), personal submission history, group formation and leadership, uniqueness of membership per assignment, group locking upon submission, late submission grace detection, cutoff date rejection, teacher grading with score validation and feedback, automated GRADE_RELEASED notification dispatch, student grade privacy enforcement, notification preferences and in-app/Telegram reminder dispatch, and secure download with path-traversal protection.
+
+---
+
+## 9. Phase 2 Endpoints Reference
+
+### User Management (`/api/v1/users`)
+- `GET /api/v1/users/me` — Authenticated student/user full profile with enrolled and instructed courses.
+- `PATCH /api/v1/users/me` — Update full name, avatar, email, or change password.
+- `POST /api/v1/users/telegram/link-token` — Generate a 6-digit OTP token for linking Telegram accounts.
+- `POST /api/v1/users/telegram/link` — Link Telegram Chat ID and username using OTP token.
+- `GET /api/v1/users` — Admin user management (search, filter by role/class/status, pagination).
+- `GET /api/v1/users/:id` — Admin get user profile with all assigned scopes.
+- `POST /api/v1/users/teachers` — Admin provision verified teacher account.
+- `PATCH /api/v1/users/:id/status` — Admin activate or suspend account (suspension revokes active sessions).
+- `POST /api/v1/users/:id/roles/global` — Admin assign/remove global roles (`ADMIN`, `USER`).
+- `POST /api/v1/users/:id/roles/class` — Admin assign/remove class roles (`CLASS_REP`, `STUDENT`).
+- `POST /api/v1/users/:id/roles/course` — Admin assign/remove course roles (`LEAD_INSTRUCTOR`, `INSTRUCTOR`, `TA`).
+
+### Academic Structure (`/api/v1/academic`)
+- `POST /api/v1/academic/years` — Create academic year (Admin).
+- `GET /api/v1/academic/years` — List academic years with semesters.
+- `PATCH /api/v1/academic/years/:id/set-current` — Set current academic year via atomic transaction.
+- `POST /api/v1/academic/semesters` — Create semester (Admin).
+- `GET /api/v1/academic/semesters` — List semesters.
+- `PATCH /api/v1/academic/semesters/:id/set-current` — Set current semester via atomic transaction.
+- `POST /api/v1/academic/classes` — Create class cohort (e.g. `SE-2027`).
+- `GET /api/v1/academic/classes` — List class cohorts with student counts and offerings.
+- `GET /api/v1/academic/classes/:id` — Class cohort details with students and class reps.
+- `POST /api/v1/academic/classes/:id/students` — Assign student to class cohort.
+- `POST /api/v1/academic/courses` — Create course catalog entry (`CS301`, credits, title).
+- `GET /api/v1/academic/courses` — Search and list course catalog entries.
+- `POST /api/v1/academic/offerings` — Create course offering (Course + Semester + Class).
+- `GET /api/v1/academic/offerings` — List offerings with filters.
+- `GET /api/v1/academic/offerings/:id` — Course offering details, syllabus, instructors, students count.
+- `POST /api/v1/academic/offerings/:id/instructors` — Assign instructor to course offering.
+- `DELETE /api/v1/academic/offerings/:id/instructors/:id` — Remove instructor from offering.
+- `POST /api/v1/academic/offerings/:id/enroll` — Enroll student in course offering.
+- `POST /api/v1/academic/offerings/:id/enroll-batch` — Batch enroll all students of the class cohort.
+- `DELETE /api/v1/academic/offerings/:id/enroll/:userId?` — Drop student enrollment.
+- `GET /api/v1/academic/my-courses` — Authenticated user's enrolled and instructed courses.
+
+### Role-Based Dashboards (`/api/v1/dashboard`)
+- `GET /api/v1/dashboard/overview` — Contextual dashboard data dynamically resolving to `ADMIN`, `TEACHER`, `CLASS_REP`, or `STUDENT`.
+
+---
+
+## 10. Phase 3 Endpoints & Features Reference
+
+### Assignment Management (`/api/v1/assignments`)
+- `POST /api/v1/assignments` — Create an assignment with optional reference material attachments (Instructor, Class Rep, or Admin).
+- `GET /api/v1/assignments/:id` — Get assignment details, instructions, and attachments.
+- `PATCH /api/v1/assignments/:id` — Update assignment details, instructions, group sizes, or extend deadlines (automatically re-schedules reminders).
+- `DELETE /api/v1/assignments/:id` — Archive assignment.
+- `GET /api/v1/assignments/offering/:offeringId` — List active assignments for a course offering.
+- `GET /api/v1/assignments/dashboard/student` — Student assignment dashboard with status categories (`UPCOMING`, `SUBMITTED`, `LATE_SUBMITTED`, `OVERDUE`, `GRADED`), deadline countdowns, grades, and teacher feedback.
+
+### Submissions Engine (`/api/v1/assignments/:id/submit`)
+- `POST /api/v1/assignments/:id/submit` — Submit or resubmit assignment file (multipart/form-data, max 50MB). Auto-increments version number, marks previous version non-current, validates enrollments, locks group on submission, and enforces deadline/cutoff windows.
+- `GET /api/v1/assignments/:id/submissions/my` — Get authenticated student's or student's group submission version history.
+- `GET /api/v1/assignments/:id/submissions` — Teacher/Admin view of all student submissions for an assignment.
+- `PATCH /api/v1/assignments/:id/submissions/:submissionId/grade` — Grade submission with numeric score and written feedback; automatically dispatches `GRADE_RELEASED` notification to student or group members.
+- `GET /api/v1/assignments/files/download?fileKey=...` — Secure file download with permission checks and path traversal protection.
+
+### Assignment Groups (`/api/v1/assignments/:id/groups`)
+- `POST /api/v1/assignments/:id/groups` — Create a group for group assignment (creator becomes leader).
+- `GET /api/v1/assignments/:id/groups` — List all groups and members for a group assignment.
+- `POST /api/v1/assignments/:id/groups/:groupId/join` — Join a group (enforces max group size, uniqueness of group membership per student, and submission lock status).
+- `POST /api/v1/assignments/:id/groups/:groupId/leave` — Leave a group before submission.
+
+### Notifications & Preferences (`/api/v1/notifications`)
+- `GET /api/v1/notifications` — Paginated user notifications with unread badge count.
+- `PATCH /api/v1/notifications/:id/read` — Mark notification as read.
+- `PATCH /api/v1/notifications/read-all` — Mark all user notifications as read.
+- `GET /api/v1/notifications/preferences` — Get notification preferences (web, Telegram, reminder intervals).
+- `PATCH /api/v1/notifications/preferences` — Update notification preferences.
+
+### Automated Deadlines & Reminders Service
+- Automated calculation of reminders for `THREE_DAYS`, `ONE_DAY`, and `TWO_HOURS` before due date.
+- Cancels pending reminders when student or group successfully submits.
+- Periodic batch processor `ReminderService.processDueReminders()` delivers in-app and Telegram notifications.
+
+
