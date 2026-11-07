@@ -325,6 +325,42 @@ npm test
 - `/past_exams <course>` — Quick search for past examination papers and solutions.
 - `🏛️ Archive & Past Exams` — Main menu interactive button displaying top downloaded resources and search shortcuts.
 
+---
+
+## 13. Phase 6 Endpoints & Features Reference
+
+### Practice Questions & Quizzes System (`/api/v1/quizzes`)
+
+#### Question Bank Management
+- `POST /api/v1/quizzes/questions` — Create practice question with prompt, chapter, topic, difficulty (`EASY`, `MEDIUM`, `HARD`), question type (`MULTIPLE_CHOICE`, `TRUE_FALSE`, `SHORT_ANSWER`), options, and pedagogical explanation. Authorized for course instructors and administrators.
+- `GET /api/v1/quizzes/questions` — List questions filtered by course offering, topic, chapter, difficulty, and type. Sanitized for students (correct answer keys and explanations omitted).
+- `GET /api/v1/quizzes/questions/:id` — Retrieve question details.
+- `PATCH /api/v1/quizzes/questions/:id` — Update question prompt, difficulty, or options.
+- `DELETE /api/v1/quizzes/questions/:id` — Soft-delete question (`isDeleted = true`) preserving historical attempt records.
+- `POST /api/v1/quizzes/questions/:id/practice` — Instant self-testing: evaluates student's answer immediately, returns `isCorrect`, correct option ID, and explanation without consuming quiz quotas.
+
+#### Formal Quiz Configuration
+- `POST /api/v1/quizzes` — Create timed quiz configuration (`durationMin`, `passingScore`, `maxAttempts`, `shuffleQuestions`, `shuffleOptions`).
+- `GET /api/v1/quizzes` — List course quizzes. Enrolled students see published quizzes and their personal attempt history/best scores; instructors see draft quizzes.
+- `GET /api/v1/quizzes/:id` — Get quiz overview and sanitized question roster.
+- `PATCH /api/v1/quizzes/:id` — Update quiz settings or toggle `isPublished`. Publishing automatically broadcasts notifications to enrolled students via web and Telegram.
+- `POST /api/v1/quizzes/:id/questions` — Add question to quiz with point weight and ordering.
+- `DELETE /api/v1/quizzes/:id/questions/:questionId` — Remove question from quiz.
+- `GET /api/v1/quizzes/:id/stats` — Instructor cohort performance analytics (total attempts, unique students, pass rate, average score, attempt log).
+
+#### Timed Quiz Attempt & Evaluation Engine
+- `POST /api/v1/quizzes/:id/attempts/start` — Start a new timed attempt. Validates attempt quota (`maxAttempts`), provides safe recovery of active in-progress attempts, calculates server expiration, and serves sanitized questions with randomized ordering.
+- `POST /api/v1/quizzes/attempts/:attemptId/draft` — Persist draft answers in the background during active attempts.
+- `POST /api/v1/quizzes/attempts/:attemptId/submit` — Submit quiz attempt. Server validates timer deadline, auto-grades objective questions (`MULTIPLE_CHOICE`, `TRUE_FALSE`), calculates score and pass/fail, and flags short-answer questions for manual review. Idempotent submission prevents double-submits.
+- `PATCH /api/v1/quizzes/attempts/:attemptId/grade` — Instructor manual grading for short-answer questions with points and written feedback.
+- `GET /api/v1/quizzes/attempts/:attemptId/review` — Review completed attempt results with question-by-question score breakdown, correct answers, and instructor explanations.
+
+### Telegram Bot Quiz Integration
+- `/quizzes` — Lists available published quizzes for the user's enrolled courses with duration, question count, and web links.
+- `/practice [topic]` — Delivers an interactive practice question with inline buttons for option selection and instant answer feedback.
+- `🎯 Practice & Quizzes` — Interactive main menu button with shortcuts to active quizzes and practice modes.
+
+
 
 
 

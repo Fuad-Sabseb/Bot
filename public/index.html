@@ -61,6 +61,9 @@
       <button class="tab-btn" data-tab="archive">
         🏛️ Past Exams & Project Archive
       </button>
+      <button class="tab-btn" data-tab="quizzes">
+        🎯 Practice & Quizzes
+      </button>
       <button class="tab-btn" data-tab="groups">
         👥 Assignment Groups
       </button>
@@ -350,6 +353,62 @@
       <!-- Archive Cards Grid -->
       <div id="archiveList">
         <div style="text-align: center; padding: 2rem; color: var(--neutral-600);">Loading academic archive...</div>
+      </div>
+    </section>
+
+    <!-- TAB 6: PRACTICE QUESTIONS & QUIZZES -->
+    <section id="tab-quizzes" class="tab-content hidden">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+        <div>
+          <h2>🎯 Course Quizzes & Practice Arena</h2>
+          <p style="color: var(--neutral-600); font-size: 0.9rem;">Test your mastery on topic practice questions or take formal timed quizzes.</p>
+        </div>
+        <div style="display: flex; gap: 0.5rem;" id="quizInstructorActions">
+          <button id="openCreateQuestionModalBtn" class="btn btn-secondary">➕ Add Question</button>
+          <button id="openCreateQuizModalBtn" class="btn btn-primary">➕ Create Quiz</button>
+        </div>
+      </div>
+
+      <!-- Sub-View Navigation Pills -->
+      <div style="display: flex; gap: 0.5rem; margin-bottom: 1.25rem; flex-wrap: wrap;">
+        <button class="btn btn-sm quiz-view-pill active" data-view="quizzes" style="border-radius: 9999px;">🎯 Formal Quizzes</button>
+        <button class="btn btn-sm quiz-view-pill btn-secondary" data-view="practice" style="border-radius: 9999px;">💡 Practice Arena</button>
+      </div>
+
+      <!-- Filter Bar -->
+      <div class="filter-bar">
+        <div class="filter-group">
+          <label style="font-weight: 600; font-size: 0.85rem;">Course Offering:</label>
+          <select id="quizzesOfferingFilter">
+            <option value="">All Enrolled Courses</option>
+          </select>
+        </div>
+
+        <div class="filter-group" id="practiceFilterGroup" style="display: none;">
+          <label style="font-weight: 600; font-size: 0.85rem;">Difficulty:</label>
+          <select id="practiceDifficultyFilter">
+            <option value="">All Difficulties</option>
+            <option value="EASY">Easy</option>
+            <option value="MEDIUM">Medium</option>
+            <option value="HARD">Hard</option>
+          </select>
+        </div>
+
+        <div class="filter-group" style="flex: 1; min-width: 200px;">
+          <input type="text" id="quizzesSearchInput" placeholder="🔍 Search quizzes or practice topics..." style="width: 100%;" />
+        </div>
+
+        <button id="refreshQuizzesBtn" class="btn btn-secondary btn-sm">🔄 Refresh</button>
+      </div>
+
+      <!-- Container: Quizzes List -->
+      <div id="quizzesContainer">
+        <div style="text-align: center; padding: 2rem; color: var(--neutral-600);">Loading quizzes...</div>
+      </div>
+
+      <!-- Container: Practice Questions List -->
+      <div id="practiceContainer" class="hidden">
+        <div style="text-align: center; padding: 2rem; color: var(--neutral-600);">Loading practice questions...</div>
       </div>
     </section>
   </main>
@@ -760,6 +819,222 @@
           Confirm Archive Moderation
         </button>
       </form>
+    </div>
+  </div>
+
+  <!-- MODAL: TAKE TIMED QUIZ -->
+  <div id="takeQuizModal" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width: 720px;">
+      <div class="modal-header" style="border-bottom: 2px solid var(--neutral-200); padding-bottom: 0.75rem;">
+        <div>
+          <h3 id="runnerQuizTitle" style="margin: 0;">Timed Quiz Attempt</h3>
+          <span id="runnerQuizInfo" style="font-size: 0.85rem; color: var(--neutral-600);">Attempt #1</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <div id="quizTimerBadge" style="background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; font-weight: 700; padding: 0.35rem 0.75rem; border-radius: 9999px; font-size: 0.95rem;">
+            ⏱️ <span id="quizCountdown">--:--</span>
+          </div>
+          <button class="modal-close" onclick="confirmExitQuiz()">&times;</button>
+        </div>
+      </div>
+
+      <div id="quizRunnerBody" style="padding: 1.25rem 0; min-height: 260px;">
+        <!-- Question Content Rendered Dynamically -->
+      </div>
+
+      <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--neutral-200); padding-top: 1rem;">
+        <button id="quizPrevBtn" class="btn btn-secondary btn-sm" onclick="navigateQuizQuestion(-1)">⬅️ Previous</button>
+        <span id="quizQuestionCounter" style="font-size: 0.85rem; font-weight: 600; color: var(--neutral-600);">Question 1 of 5</span>
+        <div style="display: flex; gap: 0.5rem;">
+          <button id="quizNextBtn" class="btn btn-secondary btn-sm" onclick="navigateQuizQuestion(1)">Next ➡️</button>
+          <button id="quizSubmitBtn" class="btn btn-primary btn-sm" onclick="submitActiveQuiz()">🏁 Submit Quiz</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: QUIZ RESULT -->
+  <div id="quizResultModal" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width: 480px; text-align: center;">
+      <div style="font-size: 3rem; margin-bottom: 0.5rem;" id="quizResultIcon">🏆</div>
+      <h3 id="quizResultTitle" style="margin-bottom: 0.5rem;">Quiz Evaluation Completed!</h3>
+      <div id="quizResultBadgeContainer" style="margin-bottom: 1rem;"></div>
+
+      <div style="background: #f8fafc; border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1.5rem; border: 1px solid var(--neutral-200);">
+        <div style="font-size: 2.25rem; font-weight: 800; color: var(--neutral-900);" id="quizResultScore">0%</div>
+        <p style="margin: 0; font-size: 0.85rem; color: var(--neutral-600);" id="quizResultPoints">0 of 0 points earned</p>
+      </div>
+
+      <div style="display: flex; gap: 0.75rem; justify-content: center;">
+        <button class="btn btn-secondary" onclick="closeModal('quizResultModal'); loadQuizzes();">Close</button>
+        <button id="openReviewFromResultBtn" class="btn btn-primary">📖 Review Answers</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: QUIZ REVIEW -->
+  <div id="quizReviewModal" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width: 760px; max-height: 85vh; display: flex; flex-direction: column;">
+      <div class="modal-header">
+        <div>
+          <h3 id="reviewQuizTitle">Quiz Attempt Review</h3>
+          <p id="reviewScoreHeader" style="font-size: 0.85rem; color: var(--neutral-600); margin: 0;"></p>
+        </div>
+        <button class="modal-close" onclick="closeModal('quizReviewModal')">&times;</button>
+      </div>
+
+      <div id="quizReviewBody" style="overflow-y: auto; padding: 1rem 0; flex: 1;">
+        <!-- Detailed answers and explanations rendered dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CREATE QUESTION -->
+  <div id="createQuestionModal" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width: 600px;">
+      <div class="modal-header">
+        <h3>➕ Add Question to Bank</h3>
+        <button class="modal-close" onclick="closeModal('createQuestionModal')">&times;</button>
+      </div>
+
+      <form id="createQuestionForm">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+          <div>
+            <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Course Offering *</label>
+            <select id="qCourseOfferingSelect" required style="width: 100%;"></select>
+          </div>
+          <div>
+            <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Question Type *</label>
+            <select id="qTypeSelect" required style="width: 100%;">
+              <option value="MULTIPLE_CHOICE">Multiple Choice</option>
+              <option value="TRUE_FALSE">True / False</option>
+              <option value="SHORT_ANSWER">Short Answer / Essay</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+          <div>
+            <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Difficulty</label>
+            <select id="qDifficultySelect" style="width: 100%;">
+              <option value="EASY">Easy</option>
+              <option value="MEDIUM" selected>Medium</option>
+              <option value="HARD">Hard</option>
+            </select>
+          </div>
+          <div>
+            <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Chapter</label>
+            <input type="text" id="qChapter" style="width: 100%;" placeholder="e.g. Chapter 4" />
+          </div>
+          <div>
+            <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Topic</label>
+            <input type="text" id="qTopic" style="width: 100%;" placeholder="e.g. Paxos Consensus" />
+          </div>
+        </div>
+
+        <div style="margin-bottom: 1rem;">
+          <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Question Prompt *</label>
+          <textarea id="qPrompt" required rows="3" style="width: 100%;" placeholder="Enter problem statement..."></textarea>
+        </div>
+
+        <!-- Options Container for MCQ / True False -->
+        <div id="qOptionsContainer" style="margin-bottom: 1rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+            <label style="font-weight: 600;">Answer Options (select the radio for correct answer) *</label>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="addOptionRow()">➕ Add Option</button>
+          </div>
+          <div id="optionsList">
+            <!-- Dynamic Option Rows -->
+          </div>
+        </div>
+
+        <div style="margin-bottom: 1.5rem;">
+          <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Pedagogical Explanation / Solution Rationale</label>
+          <textarea id="qExplanation" rows="2" style="width: 100%;" placeholder="Detailed explanation shown after submission..."></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center;">
+          💾 Save Question to Bank
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: CREATE QUIZ -->
+  <div id="createQuizModal" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width: 650px;">
+      <div class="modal-header">
+        <h3>➕ Create Timed Course Quiz</h3>
+        <button class="modal-close" onclick="closeModal('createQuizModal')">&times;</button>
+      </div>
+
+      <form id="createQuizForm">
+        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+          <div>
+            <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Quiz Title *</label>
+            <input type="text" id="quizTitleInput" required style="width: 100%;" placeholder="e.g. Midterm Readiness Assessment" />
+          </div>
+          <div>
+            <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Course Offering *</label>
+            <select id="quizCourseOfferingSelect" required style="width: 100%;"></select>
+          </div>
+        </div>
+
+        <div style="margin-bottom: 1rem;">
+          <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Instructions / Description</label>
+          <textarea id="quizDescInput" rows="2" style="width: 100%;" placeholder="Instructions, allowed resources, honor code notice..."></textarea>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+          <div>
+            <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Duration (Mins) *</label>
+            <input type="number" id="quizDurationInput" required min="1" max="300" value="30" style="width: 100%;" />
+          </div>
+          <div>
+            <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Passing Score (%) *</label>
+            <input type="number" id="quizPassingScoreInput" required min="0" max="100" value="50" style="width: 100%;" />
+          </div>
+          <div>
+            <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Max Attempts *</label>
+            <input type="number" id="quizMaxAttemptsInput" required min="1" max="10" value="3" style="width: 100%;" />
+          </div>
+        </div>
+
+        <div style="margin-bottom: 1.25rem; display: flex; gap: 1.5rem; background: #f8fafc; padding: 0.75rem; border-radius: var(--radius); border: 1px solid var(--neutral-200);">
+          <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+            <input type="checkbox" id="quizShuffleQ" checked />
+            <span style="font-size: 0.85rem; font-weight: 600;">🔀 Randomize Question Order</span>
+          </label>
+          <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+            <input type="checkbox" id="quizShuffleOpt" checked />
+            <span style="font-size: 0.85rem; font-weight: 600;">🔀 Randomize Option Order</span>
+          </label>
+        </div>
+
+        <div style="margin-bottom: 1rem;">
+          <label style="font-weight: 600; display: block; margin-bottom: 0.5rem;">Select Questions to Include:</label>
+          <div id="quizQuestionPickerList" style="max-height: 180px; overflow-y: auto; border: 1px solid var(--neutral-200); border-radius: var(--radius); padding: 0.5rem;">
+            <p style="color: var(--neutral-600); font-size: 0.85rem;">Select course offering to load questions from bank.</p>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center;">
+          🚀 Create Quiz
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: QUIZ ANALYTICS -->
+  <div id="quizAnalyticsModal" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width: 720px;">
+      <div class="modal-header">
+        <h3 id="analyticsQuizTitle">Cohort Quiz Performance Analytics</h3>
+        <button class="modal-close" onclick="closeModal('quizAnalyticsModal')">&times;</button>
+      </div>
+      <div id="quizAnalyticsBody" style="padding: 1rem 0;">
+        <!-- Analytics metrics & student attempts table rendered dynamically -->
+      </div>
     </div>
   </div>
 

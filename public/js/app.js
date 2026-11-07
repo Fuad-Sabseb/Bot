@@ -122,6 +122,10 @@ document.querySelectorAll(".tab-btn").forEach((btn) => {
       loadArchiveStats();
       loadArchiveOfferings();
     }
+    if (btn.dataset.tab === "quizzes") {
+      loadQuizzesOfferings();
+      loadQuizzes();
+    }
     if (btn.dataset.tab === "groups") loadGroupAssignmentsDropdown();
     if (btn.dataset.tab === "teacher") loadTeacherOfferings();
   });
@@ -1354,6 +1358,806 @@ document.getElementById("refreshArchiveBtn")?.addEventListener("click", () => {
 });
 document.getElementById("archiveSearchInput")?.addEventListener("keyup", (e) => {
   if (e.key === "Enter") loadArchive();
+});
+
+// ----------------------------------------------------
+// 7. PRACTICE QUESTIONS & QUIZZES (PHASE 6)
+// ----------------------------------------------------
+let activeQuizSubView = "quizzes";
+let activeQuizData = null;
+let activeQuizQuestionIndex = 0;
+let activeQuizAnswers = {};
+let quizTimerInterval = null;
+
+// Sub-view toggle
+document.querySelectorAll(".quiz-view-pill").forEach((pill) => {
+  pill.addEventListener("click", () => {
+    document.querySelectorAll(".quiz-view-pill").forEach((p) => {
+      p.classList.remove("active");
+      p.classList.add("btn-secondary");
+    });
+    pill.classList.add("active");
+    pill.classList.remove("btn-secondary");
+
+    activeQuizSubView = pill.dataset.view;
+    if (activeQuizSubView === "quizzes") {
+      document.getElementById("quizzesContainer").classList.remove("hidden");
+      document.getElementById("practiceContainer").classList.add("hidden");
+      document.getElementById("practiceFilterGroup").style.display = "none";
+      loadQuizzes();
+    } else {
+      document.getElementById("quizzesContainer").classList.add("hidden");
+      document.getElementById("practiceContainer").classList.remove("hidden");
+      document.getElementById("practiceFilterGroup").style.display = "block";
+      loadPracticeQuestions();
+    }
+  });
+});
+
+async function loadQuizzesOfferings() {
+  const selectFilter = document.getElementById("quizzesOfferingFilter");
+  const selectQ = document.getElementById("qCourseOfferingSelect");
+  const selectQuiz = document.getElementById("quizCourseOfferingSelect");
+
+  try {
+    const res = await fetch("/api/v1/academic/my-courses", { headers: getAuthHeader() });
+    const result = await res.json();
+    if (!result.success) return;
+
+    const allOfferings = [
+      ...(result.data.enrolledOfferings || []),
+      ...(result.data.instructedOfferings || []),
+    ];
+    const unique = Array.from(new Map(allOfferings.map((o) => [o.id, o])).values());
+    const optionsHtml = unique
+      .map((o) => `<option value="${o.id}">${o.course.code} — ${o.course.title} (${o.class.name})</option>`)
+      .join("");
+
+    if (selectFilter) {
+      selectFilter.innerHTML = '<option value="">All Enrolled Courses</option>' + optionsHtml;
+    }
+    if (selectQ) {
+      selectQ.innerHTML = '<option value="">Select course offering...</option>' + optionsHtml;
+    }
+    if (selectQuiz) {
+      selectQuiz.innerHTML = '<option value="">Select course offering...</option>' + optionsHtml;
+    }
+  } catch (err) {
+    console.error("Failed to load quiz course offerings:", err);
+  }
+}
+
+async function loadQuizzes() {
+  const container = document.getElementById("quizzesContainer");
+  container.innerHTML = '<div style="text-align: center; padding: 2rem;">Loading course quizzes...</div>';
+
+  const courseOfferingId = document.getElementById("quizzesOfferingFilter")?.value || "";
+  const params = new URLSearchParams();
+  if (courseOfferingId) params.append("courseOfferingId", courseOfferingId);
+
+  try {
+    const res = await fetch(`/api/v1/quizzes?${params.toString()}`, { headers: getAuthHeader() });
+    const result = await res.json();
+
+    if (!result.success || !result.data || result.data.length === 0) {
+      container.innerHTML = `
+        <div style="text-align: center; padding: 3rem; background: white; border-radius: 8px; border: 1px solid var(--neutral-200);">
+          <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">🎯</div>
+          <h3>No Quizzes Available</h3>
+          <p style="color: var(--neutral-600); margin-top: 0.5rem;">There are no active quizzes published for your enrolled courses right now.</p>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = result.data.map(renderQuizCard).join("");
+  } catch (err) {
+    container.innerHTML = `<div style="color: var(--danger); text-align: center; padding: 2rem;">${err.message}</div>`;
+  }
+}
+
+function renderQuizCard(q) {
+  const isInstructor = currentUser && (currentUser.globalRoles?.includes("ADMIN") || currentUser.role === "INSTRUCTOR");
+  const attemptsLeft = Math.max(0, q.maxAttempts - q.userAttemptsCount);
+  const bestScoreBadge = q.bestScore !== null
+    ? `<span class="badge" style="background: ${q.hasPassed ? "#dcfce7" : "#fee2e2"}; color: ${q.hasPassed ? "#15803d" : "#b91c1c"}; font-weight: 700;">Best: ${Math.round(q.bestScore)}% (${q.hasPassed ? "Passed" : "Not Passed"})</span>`
+    : "";
+
+  const publishBadge = q.isPublished
+    ? '<span class="badge badge-submitted">✅ Published</span>'
+    : '<span class="badge" style="background: #e2e8f0; color: #475569;">Draft</span>';
+
+  return `
+    <div class="assignment-card" style="margin-bottom: 1rem;">
+      <div class="card-header">
+        <div>
+          <div class="course-tag">${q.course?.code || "COURSE"} — ${q.course?.title || "Course"}</div>
+          <h3 class="card-title">🎯 ${q.title}</h3>
+        </div>
+        <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+          ${publishBadge}
+          ${bestScoreBadge}
+          <span class="badge" style="background: #e0e7ff; color: #3730a3;">⏱️ ${q.durationMin} mins</span>
+          <span class="badge" style="background: #f1f5f9; color: #334155;">❓ ${q.questionCount} Questions</span>
+        </div>
+      </div>
+
+      ${q.description ? `<p style="font-size: 0.9rem; color: var(--neutral-600); margin-bottom: 0.75rem;">${q.description}</p>` : ""}
+
+      <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; font-size: 0.85rem; color: var(--neutral-600);">
+        <div>🎯 <strong>Passing Score:</strong> ${q.passingScore}%</div>
+        <div>🔄 <strong>Attempts Used:</strong> ${q.userAttemptsCount} of ${q.maxAttempts}</div>
+        <div>🏆 <strong>Total Points:</strong> ${q.totalPoints}</div>
+      </div>
+
+      <div class="card-footer" style="margin-top: 1rem;">
+        <div style="display: flex; gap: 0.5rem;">
+          ${isInstructor ? `
+            <button class="btn btn-sm btn-secondary" onclick="openQuizAnalytics('${q.id}')">📊 Cohort Analytics</button>
+            <button class="btn btn-sm btn-secondary" onclick="toggleQuizPublish('${q.id}', ${!q.isPublished})">${q.isPublished ? "Unpublish" : "Publish"}</button>
+          ` : ""}
+        </div>
+        <div>
+          ${attemptsLeft > 0 || q.hasActiveAttempt ? `
+            <button class="btn btn-primary btn-sm" onclick="startQuizRunner('${q.id}')">
+              ${q.hasActiveAttempt ? "▶️ Resume Active Quiz" : "🚀 Start Quiz Attempt"}
+            </button>
+          ` : `
+            <button class="btn btn-secondary btn-sm" disabled>Max Attempts Reached</button>
+          `}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ----------------------------------------------------
+// TIMED QUIZ RUNNER ENGINE
+// ----------------------------------------------------
+async function startQuizRunner(quizId) {
+  try {
+    const res = await fetch(`/api/v1/quizzes/${quizId}/attempts/start`, {
+      method: "POST",
+      headers: getAuthHeader(),
+    });
+    const result = await res.json();
+
+    if (!result.success) return alert(result.error);
+
+    activeQuizData = result.data;
+    activeQuizQuestionIndex = 0;
+    activeQuizAnswers = {};
+
+    // Restore any previously saved draft answers
+    if (activeQuizData.savedAnswers) {
+      activeQuizData.savedAnswers.forEach((sa) => {
+        activeQuizAnswers[sa.questionId] = {
+          selectedOptionId: sa.selectedOptionId,
+          textResponse: sa.textResponse,
+        };
+      });
+    }
+
+    document.getElementById("runnerQuizTitle").innerText = "Timed Quiz";
+    document.getElementById("runnerQuizInfo").innerText = `Attempt #${activeQuizData.attemptNum} | Time remaining`;
+
+    document.getElementById("takeQuizModal").classList.remove("hidden");
+
+    startQuizTimer(activeQuizData.timeRemainingSeconds);
+    renderQuizRunnerQuestion(0);
+  } catch (err) {
+    alert(`Could not start quiz: ${err.message}`);
+  }
+}
+
+function startQuizTimer(secondsLeft) {
+  if (quizTimerInterval) clearInterval(quizTimerInterval);
+
+  let remaining = secondsLeft;
+  const display = document.getElementById("quizCountdown");
+
+  function update() {
+    const m = Math.floor(remaining / 60);
+    const s = remaining % 60;
+    display.innerText = `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+
+    if (remaining <= 60) {
+      document.getElementById("quizTimerBadge").style.background = "#fee2e2";
+      document.getElementById("quizTimerBadge").style.color = "#b91c1c";
+    }
+
+    if (remaining <= 0) {
+      clearInterval(quizTimerInterval);
+      alert("⏱️ Time has expired! Your quiz attempt is being submitted automatically.");
+      submitActiveQuiz();
+    }
+    remaining--;
+  }
+
+  update();
+  quizTimerInterval = setInterval(update, 1000);
+}
+
+function renderQuizRunnerQuestion(index) {
+  const container = document.getElementById("quizRunnerBody");
+  const questions = activeQuizData.questions;
+
+  if (index < 0 || index >= questions.length) return;
+  activeQuizQuestionIndex = index;
+
+  const q = questions[index];
+  const userAns = activeQuizAnswers[q.questionId] || {};
+
+  document.getElementById("quizQuestionCounter").innerText = `Question ${index + 1} of ${questions.length}`;
+  document.getElementById("quizPrevBtn").disabled = index === 0;
+  document.getElementById("quizNextBtn").style.display = index === questions.length - 1 ? "none" : "inline-block";
+
+  let optionsHtml = "";
+
+  if (q.type === "MULTIPLE_CHOICE" || q.type === "TRUE_FALSE") {
+    optionsHtml = `
+      <div style="display: flex; flex-direction: column; gap: 0.75rem; margin-top: 1rem;">
+        ${q.options.map((opt, i) => `
+          <label style="display: flex; align-items: center; gap: 0.75rem; background: #f8fafc; border: 1px solid var(--neutral-200); border-radius: var(--radius); padding: 0.75rem 1rem; cursor: pointer;">
+            <input type="radio" name="runnerOption" value="${opt.id}" ${userAns.selectedOptionId === opt.id ? "checked" : ""} onchange="recordRunnerAnswer('${q.questionId}', '${opt.id}')" />
+            <span style="font-weight: 500;">${String.fromCharCode(65 + i)}) ${opt.optionText}</span>
+          </label>
+        `).join("")}
+      </div>
+    `;
+  } else {
+    optionsHtml = `
+      <div style="margin-top: 1rem;">
+        <label style="display: block; font-weight: 600; margin-bottom: 0.5rem;">Your Written Response:</label>
+        <textarea id="runnerTextResponse" rows="4" style="width: 100%;" placeholder="Enter explanation or code..." oninput="recordRunnerTextAnswer('${q.questionId}', this.value)">${userAns.textResponse || ""}</textarea>
+      </div>
+    `;
+  }
+
+  container.innerHTML = `
+    <div style="margin-bottom: 1rem;">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <span class="badge" style="background: #e2e8f0; color: #334155;">${q.type.replace(/_/g, " ")}</span>
+        <span style="font-size: 0.85rem; font-weight: 600; color: var(--neutral-600);">${q.points} Points</span>
+      </div>
+      <h3 style="margin-top: 0.75rem; font-size: 1.15rem; line-height: 1.5;">${q.prompt}</h3>
+    </div>
+    ${optionsHtml}
+  `;
+}
+
+function navigateQuizQuestion(step) {
+  renderQuizRunnerQuestion(activeQuizQuestionIndex + step);
+}
+
+function recordRunnerAnswer(questionId, selectedOptionId) {
+  if (!activeQuizAnswers[questionId]) activeQuizAnswers[questionId] = {};
+  activeQuizAnswers[questionId].selectedOptionId = selectedOptionId;
+
+  // Background save draft
+  fetch(`/api/v1/quizzes/attempts/${activeQuizData.attemptId}/draft`, {
+    method: "POST",
+    headers: { ...getAuthHeader(), "Content-Type": "application/json" },
+    body: JSON.stringify({ questionId, selectedOptionId }),
+  }).catch(() => {});
+}
+
+function recordRunnerTextAnswer(questionId, text) {
+  if (!activeQuizAnswers[questionId]) activeQuizAnswers[questionId] = {};
+  activeQuizAnswers[questionId].textResponse = text;
+
+  // Background save draft
+  fetch(`/api/v1/quizzes/attempts/${activeQuizData.attemptId}/draft`, {
+    method: "POST",
+    headers: { ...getAuthHeader(), "Content-Type": "application/json" },
+    body: JSON.stringify({ questionId, textResponse: text }),
+  }).catch(() => {});
+}
+
+function confirmExitQuiz() {
+  if (confirm("⚠️ Are you sure you want to exit? Your timer will continue running on the server until expiration.")) {
+    if (quizTimerInterval) clearInterval(quizTimerInterval);
+    closeModal("takeQuizModal");
+  }
+}
+
+async function submitActiveQuiz() {
+  if (quizTimerInterval) clearInterval(quizTimerInterval);
+
+  const answersArray = Object.keys(activeQuizAnswers).map((qId) => ({
+    questionId: qId,
+    selectedOptionId: activeQuizAnswers[qId].selectedOptionId,
+    textResponse: activeQuizAnswers[qId].textResponse,
+  }));
+
+  try {
+    const res = await fetch(`/api/v1/quizzes/attempts/${activeQuizData.attemptId}/submit`, {
+      method: "POST",
+      headers: { ...getAuthHeader(), "Content-Type": "application/json" },
+      body: JSON.stringify({ answers: answersArray }),
+    });
+    const result = await res.json();
+
+    closeModal("takeQuizModal");
+
+    if (!result.success) return alert(result.error);
+
+    const data = result.data;
+    document.getElementById("quizResultScore").innerText = `${Math.round(data.score)}%`;
+    document.getElementById("quizResultPoints").innerText = `${data.totalEarned} of ${data.totalPossible} points earned`;
+
+    const icon = data.passed ? "🏆" : data.status === "NEEDS_GRADING" ? "📝" : "⚠️";
+    document.getElementById("quizResultIcon").innerText = icon;
+    document.getElementById("quizResultTitle").innerText = data.passed
+      ? "Congratulations! You Passed!"
+      : data.status === "NEEDS_GRADING"
+      ? "Submitted for Faculty Grading"
+      : "Quiz Completed";
+
+    const badge = data.passed
+      ? '<span class="badge badge-submitted">PASSED</span>'
+      : data.status === "NEEDS_GRADING"
+      ? '<span class="badge badge-late">PENDING MANUAL REVIEW</span>'
+      : '<span class="badge badge-overdue">FAILED</span>';
+
+    document.getElementById("quizResultBadgeContainer").innerHTML = badge;
+
+    document.getElementById("openReviewFromResultBtn").onclick = () => {
+      closeModal("quizResultModal");
+      openQuizReview(data.attemptId);
+    };
+
+    document.getElementById("quizResultModal").classList.remove("hidden");
+    loadQuizzes();
+  } catch (err) {
+    alert(`Submission error: ${err.message}`);
+  }
+}
+
+// ----------------------------------------------------
+// QUIZ REVIEW ENGINE
+// ----------------------------------------------------
+async function openQuizReview(attemptId) {
+  try {
+    const res = await fetch(`/api/v1/quizzes/attempts/${attemptId}/review`, { headers: getAuthHeader() });
+    const result = await res.json();
+    if (!result.success) return alert(result.error);
+
+    const a = result.data;
+    document.getElementById("reviewQuizTitle").innerText = `Review: ${a.quizTitle}`;
+    document.getElementById("reviewScoreHeader").innerText = `Score: ${Math.round(a.score)}% | ${a.passed ? "Passed ✅" : "Not Passed ❌"}`;
+
+    document.getElementById("quizReviewBody").innerHTML = a.questions.map((q, idx) => {
+      const isCorrect = q.isCorrect;
+      const statusIcon = isCorrect === true ? "✅" : isCorrect === false ? "❌" : "📝";
+
+      let optionsReview = "";
+      if (q.options && q.options.length > 0) {
+        optionsReview = q.options.map((opt) => {
+          const isChosen = q.selectedOptionId === opt.id;
+          const isActualCorrect = opt.isCorrect;
+          let border = "1px solid var(--neutral-200)";
+          let bg = "#fff";
+
+          if (isActualCorrect) {
+            bg = "#dcfce7";
+            border = "1px solid #86efac";
+          } else if (isChosen && !isActualCorrect) {
+            bg = "#fee2e2";
+            border = "1px solid #fca5a5";
+          }
+
+          return `
+            <div style="background: ${bg}; border: ${border}; border-radius: var(--radius); padding: 0.6rem 0.75rem; margin-top: 0.35rem; font-size: 0.9rem;">
+              ${isActualCorrect ? "⭐ " : ""}${opt.optionText} ${isChosen ? "<strong>(Your Answer)</strong>" : ""}
+            </div>
+          `;
+        }).join("");
+      } else {
+        optionsReview = `
+          <div style="background: #f8fafc; padding: 0.75rem; border-radius: var(--radius); margin-top: 0.5rem; font-size: 0.9rem;">
+            <strong>Your Response:</strong> ${q.textResponse || "<em>No response</em>"}
+          </div>
+        `;
+      }
+
+      return `
+        <div style="border: 1px solid var(--neutral-200); border-radius: var(--radius); padding: 1rem; margin-bottom: 1rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+            <span style="font-weight: 700;">Question ${idx + 1} (${q.pointsAwarded} / ${q.points} pts)</span>
+            <span>${statusIcon}</span>
+          </div>
+          <p style="margin: 0; font-weight: 600;">${q.prompt}</p>
+          ${optionsReview}
+          ${q.explanation ? `<div style="margin-top: 0.75rem; font-size: 0.85rem; color: #4338ca; background: #eef2ff; padding: 0.5rem 0.75rem; border-radius: 4px;">💡 <strong>Explanation:</strong> ${q.explanation}</div>` : ""}
+          ${q.graderFeedback ? `<div style="margin-top: 0.5rem; font-size: 0.85rem; color: #92400e; background: #fef3c7; padding: 0.5rem 0.75rem; border-radius: 4px;">👨‍🏫 <strong>Instructor Feedback:</strong> ${q.graderFeedback}</div>` : ""}
+        </div>
+      `;
+    }).join("");
+
+    document.getElementById("quizReviewModal").classList.remove("hidden");
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+// ----------------------------------------------------
+// PRACTICE ARENA ENGINE
+// ----------------------------------------------------
+async function loadPracticeQuestions() {
+  const container = document.getElementById("practiceContainer");
+  container.innerHTML = '<div style="text-align: center; padding: 2rem;">Loading practice questions...</div>';
+
+  const courseOfferingId = document.getElementById("quizzesOfferingFilter")?.value || "";
+  const difficulty = document.getElementById("practiceDifficultyFilter")?.value || "";
+  const search = document.getElementById("quizzesSearchInput")?.value.trim() || "";
+
+  const params = new URLSearchParams();
+  if (courseOfferingId) params.append("courseOfferingId", courseOfferingId);
+  if (difficulty) params.append("difficulty", difficulty);
+  if (search) params.append("search", search);
+
+  try {
+    const res = await fetch(`/api/v1/quizzes/questions?${params.toString()}`, { headers: getAuthHeader() });
+    const result = await res.json();
+
+    if (!result.success || !result.data || result.data.length === 0) {
+      container.innerHTML = `
+        <div style="text-align: center; padding: 3rem; background: white; border-radius: 8px; border: 1px solid var(--neutral-200);">
+          <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">💡</div>
+          <h3>No Practice Questions Found</h3>
+          <p style="color: var(--neutral-600); margin-top: 0.5rem;">No questions match your current filter. Try selecting another course or difficulty.</p>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = result.data.map(renderPracticeCard).join("");
+  } catch (err) {
+    container.innerHTML = `<div style="color: var(--danger); text-align: center; padding: 2rem;">${err.message}</div>`;
+  }
+}
+
+function renderPracticeCard(q) {
+  return `
+    <div class="assignment-card" style="margin-bottom: 1rem;" id="pracCard_${q.id}">
+      <div class="card-header">
+        <div>
+          <span class="badge" style="background: #e0e7ff; color: #3730a3;">${q.difficulty}</span>
+          ${q.topic ? `<span class="badge" style="background: #f1f5f9; color: #334155;">🏷️ ${q.topic}</span>` : ""}
+          <h3 class="card-title" style="margin-top: 0.5rem;">${q.prompt}</h3>
+        </div>
+      </div>
+
+      <div style="margin: 1rem 0;">
+        ${q.options && q.options.length > 0 ? `
+          <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+            ${q.options.map((opt, i) => `
+              <label style="display: flex; align-items: center; gap: 0.75rem; background: #f8fafc; border: 1px solid var(--neutral-200); border-radius: var(--radius); padding: 0.6rem 0.75rem; cursor: pointer;">
+                <input type="radio" name="practiceOpt_${q.id}" value="${opt.id}" />
+                <span>${String.fromCharCode(65 + i)}) ${opt.optionText}</span>
+              </label>
+            `).join("")}
+          </div>
+        ` : `
+          <textarea id="pracText_${q.id}" rows="2" style="width: 100%;" placeholder="Enter your answer..."></textarea>
+        `}
+      </div>
+
+      <div id="pracFeedback_${q.id}" class="hidden" style="margin-bottom: 0.75rem; padding: 0.75rem; border-radius: var(--radius);"></div>
+
+      <div class="card-footer">
+        <div></div>
+        <button class="btn btn-primary btn-sm" onclick="checkPracticeAnswer('${q.id}')">
+          💡 Check Answer & Explanation
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+async function checkPracticeAnswer(questionId) {
+  const selectedOpt = document.querySelector(`input[name="practiceOpt_${questionId}"]:checked`);
+  const textInput = document.getElementById(`pracText_${questionId}`);
+
+  const selectedOptionId = selectedOpt ? selectedOpt.value : undefined;
+  const textResponse = textInput ? textInput.value : undefined;
+
+  try {
+    const res = await fetch(`/api/v1/quizzes/questions/${questionId}/practice`, {
+      method: "POST",
+      headers: { ...getAuthHeader(), "Content-Type": "application/json" },
+      body: JSON.stringify({ selectedOptionId, textResponse }),
+    });
+    const result = await res.json();
+    if (!result.success) return alert(result.error);
+
+    const fb = document.getElementById(`pracFeedback_${questionId}`);
+    fb.classList.remove("hidden");
+
+    if (result.data.isCorrect) {
+      fb.style.background = "#dcfce7";
+      fb.style.border = "1px solid #86efac";
+      fb.style.color = "#15803d";
+      fb.innerHTML = `<strong>✅ Correct Answer!</strong><br>${result.data.explanation}`;
+    } else {
+      fb.style.background = "#fee2e2";
+      fb.style.border = "1px solid #fca5a5";
+      fb.style.color = "#b91c1c";
+      fb.innerHTML = `<strong>❌ Incorrect.</strong><br>${result.data.explanation}`;
+    }
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+// ----------------------------------------------------
+// INSTRUCTOR QUIZ & QUESTION BUILDER
+// ----------------------------------------------------
+let optionRowCount = 0;
+
+function addOptionRow(text = "", isCorrect = false) {
+  const container = document.getElementById("optionsList");
+  const rowId = `optRow_${optionRowCount++}`;
+
+  const row = document.createElement("div");
+  row.id = rowId;
+  row.style.display = "flex";
+  row.style.alignItems = "center";
+  row.style.gap = "0.75rem";
+  row.style.marginBottom = "0.5rem";
+
+  row.innerHTML = `
+    <input type="radio" name="correctOptionRadio" value="${rowId}" ${isCorrect ? "checked" : ""} title="Mark as correct answer" />
+    <input type="text" class="opt-text-input" value="${text}" required style="flex: 1;" placeholder="Option text..." />
+    <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('${rowId}').remove()">&times;</button>
+  `;
+  container.appendChild(row);
+}
+
+document.getElementById("openCreateQuestionModalBtn")?.addEventListener("click", () => {
+  loadQuizzesOfferings();
+  const list = document.getElementById("optionsList");
+  list.innerHTML = "";
+  optionRowCount = 0;
+  addOptionRow("Option 1", true);
+  addOptionRow("Option 2", false);
+  document.getElementById("createQuestionModal").classList.remove("hidden");
+});
+
+document.getElementById("createQuestionForm")?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const courseOfferingId = document.getElementById("qCourseOfferingSelect").value;
+  const type = document.getElementById("qTypeSelect").value;
+  const difficulty = document.getElementById("qDifficultySelect").value;
+  const chapter = document.getElementById("qChapter").value.trim();
+  const topic = document.getElementById("qTopic").value.trim();
+  const prompt = document.getElementById("qPrompt").value.trim();
+  const explanation = document.getElementById("qExplanation").value.trim();
+
+  let options = [];
+  if (type === "MULTIPLE_CHOICE" || type === "TRUE_FALSE") {
+    const selectedRadio = document.querySelector('input[name="correctOptionRadio"]:checked');
+    if (!selectedRadio) {
+      alert("Please select which option is correct by clicking the radio button.");
+      return;
+    }
+
+    const rows = document.querySelectorAll("#optionsList > div");
+    rows.forEach((row) => {
+      const textInput = row.querySelector(".opt-text-input");
+      const isCorrect = row.querySelector('input[type="radio"]').checked;
+      if (textInput && textInput.value.trim()) {
+        options.push({ optionText: textInput.value.trim(), isCorrect });
+      }
+    });
+
+    if (options.length < 2) {
+      alert("Please provide at least 2 options.");
+      return;
+    }
+  }
+
+  try {
+    const res = await fetch("/api/v1/quizzes/questions", {
+      method: "POST",
+      headers: { ...getAuthHeader(), "Content-Type": "application/json" },
+      body: JSON.stringify({ courseOfferingId, type, difficulty, chapter, topic, prompt, explanation, options }),
+    });
+    const result = await res.json();
+    if (!result.success) return alert(result.error);
+
+    alert("✅ Practice question created successfully!");
+    closeModal("createQuestionModal");
+    document.getElementById("createQuestionForm").reset();
+    if (activeQuizSubView === "practice") loadPracticeQuestions();
+  } catch (err) {
+    alert(err.message);
+  }
+});
+
+// Quiz Creator Modal Handler
+document.getElementById("openCreateQuizModalBtn")?.addEventListener("click", () => {
+  loadQuizzesOfferings();
+  document.getElementById("createQuizModal").classList.remove("hidden");
+});
+
+document.getElementById("quizCourseOfferingSelect")?.addEventListener("change", async (e) => {
+  const offeringId = e.target.value;
+  const picker = document.getElementById("quizQuestionPickerList");
+  if (!offeringId) {
+    picker.innerHTML = '<p style="color: var(--neutral-600); font-size: 0.85rem;">Select course offering to load questions from bank.</p>';
+    return;
+  }
+
+  picker.innerHTML = '<p style="color: var(--neutral-600); font-size: 0.85rem;">Loading questions...</p>';
+
+  try {
+    const res = await fetch(`/api/v1/quizzes/questions?courseOfferingId=${offeringId}`, { headers: getAuthHeader() });
+    const result = await res.json();
+    if (!result.success || !result.data || result.data.length === 0) {
+      picker.innerHTML = '<p style="color: var(--neutral-600); font-size: 0.85rem;">No questions found in bank for this course. Add questions first.</p>';
+      return;
+    }
+
+    picker.innerHTML = result.data.map((q) => `
+      <label style="display: flex; align-items: center; gap: 0.5rem; padding: 0.35rem 0; border-bottom: 1px solid var(--neutral-100); font-size: 0.85rem; cursor: pointer;">
+        <input type="checkbox" class="quiz-q-checkbox" value="${q.id}" checked />
+        <span>[${q.difficulty}] ${q.prompt.slice(0, 65)}...</span>
+      </label>
+    `).join("");
+  } catch (err) {
+    picker.innerHTML = `<p style="color: var(--danger); font-size: 0.85rem;">${err.message}</p>`;
+  }
+});
+
+document.getElementById("createQuizForm")?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+
+  const title = document.getElementById("quizTitleInput").value.trim();
+  const courseOfferingId = document.getElementById("quizCourseOfferingSelect").value;
+  const description = document.getElementById("quizDescInput").value.trim();
+  const durationMin = parseInt(document.getElementById("quizDurationInput").value, 10);
+  const passingScore = parseFloat(document.getElementById("quizPassingScoreInput").value);
+  const maxAttempts = parseInt(document.getElementById("quizMaxAttemptsInput").value, 10);
+  const shuffleQuestions = document.getElementById("quizShuffleQ").checked;
+  const shuffleOptions = document.getElementById("quizShuffleOpt").checked;
+
+  const checkedQuestions = Array.from(document.querySelectorAll(".quiz-q-checkbox:checked")).map((cb) => cb.value);
+
+  try {
+    const res = await fetch("/api/v1/quizzes", {
+      method: "POST",
+      headers: { ...getAuthHeader(), "Content-Type": "application/json" },
+      body: JSON.stringify({
+        title,
+        courseOfferingId,
+        description,
+        durationMin,
+        passingScore,
+        maxAttempts,
+        shuffleQuestions,
+        shuffleOptions,
+      }),
+    });
+    const result = await res.json();
+    if (!result.success) return alert(result.error);
+
+    const quizId = result.data.id;
+
+    // Attach selected questions
+    for (let i = 0; i < checkedQuestions.length; i++) {
+      await fetch(`/api/v1/quizzes/${quizId}/questions`, {
+        method: "POST",
+        headers: { ...getAuthHeader(), "Content-Type": "application/json" },
+        body: JSON.stringify({ questionId: checkedQuestions[i], points: 1.0, orderIndex: i }),
+      });
+    }
+
+    alert("✅ Quiz created successfully with selected questions!");
+    closeModal("createQuizModal");
+    document.getElementById("createQuizForm").reset();
+    loadQuizzes();
+  } catch (err) {
+    alert(err.message);
+  }
+});
+
+async function toggleQuizPublish(quizId, shouldPublish) {
+  try {
+    const res = await fetch(`/api/v1/quizzes/${quizId}`, {
+      method: "PATCH",
+      headers: { ...getAuthHeader(), "Content-Type": "application/json" },
+      body: JSON.stringify({ isPublished: shouldPublish }),
+    });
+    const result = await res.json();
+    if (!result.success) return alert(result.error);
+
+    alert(`Quiz status updated to: ${shouldPublish ? "Published" : "Draft"}`);
+    loadQuizzes();
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+async function openQuizAnalytics(quizId) {
+  try {
+    const res = await fetch(`/api/v1/quizzes/${quizId}/stats`, { headers: getAuthHeader() });
+    const result = await res.json();
+    if (!result.success) return alert(result.error);
+
+    const s = result.data;
+    document.getElementById("analyticsQuizTitle").innerText = `Analytics: ${s.title} (${s.course.code})`;
+
+    document.getElementById("quizAnalyticsBody").innerHTML = `
+      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem; text-align: center;">
+        <div style="background: #f8fafc; padding: 1rem; border-radius: var(--radius); border: 1px solid var(--neutral-200);">
+          <div style="font-size: 1.5rem; font-weight: 700;">${s.totalAttempts}</div>
+          <div style="font-size: 0.8rem; color: var(--neutral-600);">Total Attempts</div>
+        </div>
+        <div style="background: #f8fafc; padding: 1rem; border-radius: var(--radius); border: 1px solid var(--neutral-200);">
+          <div style="font-size: 1.5rem; font-weight: 700;">${s.uniqueStudents}</div>
+          <div style="font-size: 0.8rem; color: var(--neutral-600);">Students</div>
+        </div>
+        <div style="background: #f8fafc; padding: 1rem; border-radius: var(--radius); border: 1px solid var(--neutral-200);">
+          <div style="font-size: 1.5rem; font-weight: 700; color: #16a34a;">${s.passRate}%</div>
+          <div style="font-size: 0.8rem; color: var(--neutral-600);">Pass Rate</div>
+        </div>
+        <div style="background: #f8fafc; padding: 1rem; border-radius: var(--radius); border: 1px solid var(--neutral-200);">
+          <div style="font-size: 1.5rem; font-weight: 700; color: #4f46e5;">${s.avgScore}%</div>
+          <div style="font-size: 0.8rem; color: var(--neutral-600);">Average Score</div>
+        </div>
+      </div>
+
+      <h4 style="margin-bottom: 0.75rem;">Student Attempt History:</h4>
+      ${s.attempts.length > 0 ? `
+        <table>
+          <thead>
+            <tr>
+              <th>Student</th>
+              <th>Attempt</th>
+              <th>Score</th>
+              <th>Status</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${s.attempts.map((att) => `
+              <tr>
+                <td><strong>${att.student.fullName}</strong> (${att.student.campusId || "Student"})</td>
+                <td>#${att.attemptNum}</td>
+                <td>${Math.round(att.score)}%</td>
+                <td><span class="badge ${att.passed ? "badge-submitted" : "badge-overdue"}">${att.passed ? "PASSED" : "FAILED"}</span></td>
+                <td>${new Date(att.submittedAt).toLocaleString()}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      ` : `<p style="color: var(--neutral-600);">No student attempts recorded yet.</p>`}
+    `;
+
+    document.getElementById("quizAnalyticsModal").classList.remove("hidden");
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+// Filter listeners
+document.getElementById("quizzesOfferingFilter")?.addEventListener("change", () => {
+  if (activeQuizSubView === "quizzes") loadQuizzes();
+  else loadPracticeQuestions();
+});
+document.getElementById("practiceDifficultyFilter")?.addEventListener("change", loadPracticeQuestions);
+document.getElementById("refreshQuizzesBtn")?.addEventListener("click", () => {
+  if (activeQuizSubView === "quizzes") loadQuizzes();
+  else loadPracticeQuestions();
+});
+document.getElementById("quizzesSearchInput")?.addEventListener("keyup", (e) => {
+  if (e.key === "Enter") {
+    if (activeQuizSubView === "quizzes") loadQuizzes();
+    else loadPracticeQuestions();
+  }
 });
 
 // Initial boot

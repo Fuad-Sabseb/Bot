@@ -565,6 +565,7 @@ model PracticeQuestion {
   type             QuestionType
   prompt           String
   explanation      String?
+  createdById      String?
   isDeleted        Boolean             @default(false)
 
   options          QuestionOption[]
@@ -599,6 +600,9 @@ model Quiz {
   durationMin      Int             @default(30)
   passingScore     Float           @default(50.0)
   maxAttempts      Int             @default(3)
+  shuffleQuestions Boolean         @default(true)
+  shuffleOptions   Boolean         @default(true)
+  createdById      String?
   isPublished      Boolean         @default(false)
   isArchived       Boolean         @default(false)
 
