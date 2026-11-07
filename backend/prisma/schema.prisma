@@ -64,6 +64,7 @@ enum ModerationStatus {
   PENDING
   APPROVED
   REJECTED
+  ARCHIVED
 }
 
 enum NotificationType {
@@ -516,7 +517,10 @@ model ArchivedResource {
   id               String           @id @default(uuid())
   title            String
   description      String?
-  resourceType     String           // "GRADUATION_PROJECT", "PAST_EXAM", "LAB_REPORT"
+  resourceType     String           // "PAST_EXAM", "PROJECT", "SOLUTION", "REFERENCE"
+  assessmentType   String?          // "MIDTERM", "FINAL", "QUIZ", "LAB_EXAM", "GRADUATION_PROJECT", "TERM_PROJECT", etc.
+  examYear         Int?             // e.g. 2021, 2022, 2023, 2024
+  isOfficial       Boolean          @default(false)
   courseOfferingId String
   courseOffering   CourseOffering   @relation(fields: [courseOfferingId], references: [id], onDelete: Restrict)
   academicYearStr  String           // e.g. "2023/2024"
@@ -528,6 +532,8 @@ model ArchivedResource {
   fileName         String
   fileSize         Int
   mimeType         String
+  fileSha256       String?
+  tags             String?
   status           ModerationStatus @default(PENDING)
   moderatedById    String?
   moderatedBy      User?            @relation("ArchiveModerator", fields: [moderatedById], references: [id], onDelete: SetNull)
@@ -541,6 +547,8 @@ model ArchivedResource {
 
   @@index([courseOfferingId, status])
   @@index([status, resourceType])
+  @@index([status, isOfficial])
+  @@index([status, examYear])
 }
 
 // ==========================================
