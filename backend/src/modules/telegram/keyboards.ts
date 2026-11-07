@@ -11,10 +11,13 @@ export const mainMenuKeyboard: TelegramBot.InlineKeyboardMarkup = {
       { text: "📤 Assignment", callback_data: "assignment" },
     ],
     [
-      { text: "📢 Important Announcement", callback_data: "announcement" },
-      { text: "💬 Feedback", callback_data: "feedback" },
+      { text: "🏛️ Archive & Past Exams", callback_data: "academic_archive" },
+      { text: "📢 Announcement", callback_data: "announcement" },
     ],
-    [{ text: "🧑‍💼 Admin", callback_data: "admin_panel" }],
+    [
+      { text: "💬 Feedback", callback_data: "feedback" },
+      { text: "🧑‍💼 Admin", callback_data: "admin_panel" },
+    ],
     [{ text: "❓ Help", callback_data: "help" }],
   ],
 };
