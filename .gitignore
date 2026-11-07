@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+backend/node_modules/
+
+# Build outputs
+dist/
+backend/dist/
+build/
+
+# Environment and secrets
+.env
+.env.local
+.env.*.local
+
+# OS and Editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Local runtime data, text databases & logs
+*.txt
+!README.md
+storage/
+assignments/
+legacy_data/
+migration-report.json
