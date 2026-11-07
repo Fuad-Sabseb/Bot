@@ -35,6 +35,11 @@ async function checkAuthSession() {
       const roleStr = currentUser.globalRoles?.[0] || "USER";
       displayName.innerText = `👤 ${currentUser.fullName} (${roleStr})`;
       logoutBtn.style.display = "inline-block";
+
+      if (currentUser.globalRoles?.includes("ADMIN")) {
+        const modBtn = document.getElementById("viewAdminModerationBtn");
+        if (modBtn) modBtn.style.display = "inline-flex";
+      }
       return true;
     } else {
       localStorage.removeItem("campus_access_token");
@@ -125,6 +130,9 @@ document.querySelectorAll(".tab-btn").forEach((btn) => {
     if (btn.dataset.tab === "quizzes") {
       loadQuizzesOfferings();
       loadQuizzes();
+    }
+    if (btn.dataset.tab === "blog") {
+      loadBlogPosts();
     }
     if (btn.dataset.tab === "groups") loadGroupAssignmentsDropdown();
     if (btn.dataset.tab === "teacher") loadTeacherOfferings();
@@ -2159,6 +2167,637 @@ document.getElementById("quizzesSearchInput")?.addEventListener("keyup", (e) => 
     else loadPracticeQuestions();
   }
 });
+
+// ====================================================
+// PHASE 7: COMMUNITY & STUDENT BLOG SYSTEM
+// ====================================================
+
+let currentBlogCategory = "";
+let currentBlogSearch = "";
+let currentBlogSort = "recent";
+let showingMyPosts = false;
+let showingBookmarks = false;
+let activeReadingPostId = null;
+
+// Category pill filters
+document.querySelectorAll(".blog-cat-pill").forEach((pill) => {
+  pill.addEventListener("click", () => {
+    document.querySelectorAll(".blog-cat-pill").forEach((p) => {
+      p.classList.remove("active");
+      p.classList.add("btn-secondary");
+    });
+    pill.classList.add("active");
+    pill.classList.remove("btn-secondary");
+
+    currentBlogCategory = pill.dataset.category || "";
+    showingMyPosts = false;
+    showingBookmarks = false;
+    loadBlogPosts();
+  });
+});
+
+// Blog Filter Listeners
+document.getElementById("blogSortSelect")?.addEventListener("change", (e) => {
+  currentBlogSort = e.target.value;
+  loadBlogPosts();
+});
+
+document.getElementById("refreshBlogBtn")?.addEventListener("click", () => {
+  loadBlogPosts();
+});
+
+document.getElementById("blogSearchInput")?.addEventListener("keyup", (e) => {
+  if (e.key === "Enter") {
+    currentBlogSearch = e.target.value.trim();
+    loadBlogPosts();
+  }
+});
+
+// Action buttons
+document.getElementById("viewBookmarksBtn")?.addEventListener("click", () => {
+  showingBookmarks = true;
+  showingMyPosts = false;
+  loadBlogPosts();
+});
+
+document.getElementById("viewMyPostsBtn")?.addEventListener("click", () => {
+  showingMyPosts = true;
+  showingBookmarks = false;
+  loadBlogPosts();
+});
+
+document.getElementById("openCreatePostModalBtn")?.addEventListener("click", () => {
+  document.getElementById("createPostForm").reset();
+  document.getElementById("postCoverUrl").value = "";
+  document.getElementById("coverUploadStatus").innerText = "";
+  document.getElementById("postPreviewBox").classList.add("hidden");
+  document.getElementById("createPostModal").classList.remove("hidden");
+});
+
+// Toggle Markdown Preview
+document.getElementById("togglePostPreviewBtn")?.addEventListener("click", () => {
+  const previewBox = document.getElementById("postPreviewBox");
+  const content = document.getElementById("postContentInput").value;
+  if (previewBox.classList.contains("hidden")) {
+    previewBox.innerHTML = renderMarkdown(content);
+    previewBox.classList.remove("hidden");
+  } else {
+    previewBox.classList.add("hidden");
+  }
+});
+
+// Simple client-side Markdown formatter
+function renderMarkdown(md) {
+  if (!md) return "";
+  let html = md
+    .replace(/^### (.*$)/gim, '<h3 style="margin-top:1rem;margin-bottom:0.5rem;font-size:1.15rem;">$1</h3>')
+    .replace(/^## (.*$)/gim, '<h2 style="margin-top:1.25rem;margin-bottom:0.5rem;font-size:1.35rem;">$1</h2>')
+    .replace(/^# (.*$)/gim, '<h1 style="margin-top:1.5rem;margin-bottom:0.75rem;font-size:1.6rem;">$1</h1>')
+    .replace(/\*\*(.*)\*\*/gim, '<strong>$1</strong>')
+    .replace(/\*(.*)\*/gim, '<em>$1</em>')
+    .replace(/```([\s\S]*?)```/gim, '<pre style="background:#1e293b;color:#f8fafc;padding:0.75rem;border-radius:var(--radius);overflow-x:auto;margin:0.75rem 0;"><code>$1</code></pre>')
+    .replace(/`([^`]+)`/gim, '<code style="background:#f1f5f9;padding:0.15rem 0.35rem;border-radius:4px;color:#0f172a;">$1</code>')
+    .replace(/\n$/gim, '<br />');
+  return html.split("\n\n").map(p => `<p style="margin-bottom:0.85rem;">${p}</p>`).join("");
+}
+
+// Cover image file upload handler
+document.getElementById("postCoverFileInput")?.addEventListener("change", async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const status = document.getElementById("coverUploadStatus");
+  status.innerText = "Uploading cover...";
+
+  const formData = new FormData();
+  formData.append("image", file);
+
+  try {
+    const res = await fetch("/api/v1/blog/upload-cover", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${getAuthToken()}`,
+      },
+      body: formData,
+    });
+    const result = await res.json();
+    if (result.success) {
+      document.getElementById("postCoverUrl").value = result.data.fileUrl;
+      status.innerText = "✅ Uploaded!";
+    } else {
+      status.innerText = `❌ ${result.error || "Upload failed"}`;
+    }
+  } catch (err) {
+    status.innerText = `❌ ${err.message}`;
+  }
+});
+
+// Create Post Form Submission
+document.getElementById("createPostForm")?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const title = document.getElementById("postTitleInput").value.trim();
+  const category = document.getElementById("postCategorySelect").value;
+  const tags = document.getElementById("postTagsInput").value.trim();
+  const coverImage = document.getElementById("postCoverUrl").value.trim();
+  const content = document.getElementById("postContentInput").value.trim();
+
+  try {
+    const res = await fetch("/api/v1/blog/posts", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${getAuthToken()}`,
+      },
+      body: JSON.stringify({ title, category, tags, coverImage, content }),
+    });
+    const result = await res.json();
+    if (result.success) {
+      alert("✅ Article submitted! If you are a student, it will appear publicly once approved by an administrator.");
+      closeModal("createPostModal");
+      loadBlogPosts();
+    } else {
+      alert(`Error: ${result.error}`);
+    }
+  } catch (err) {
+    alert(`Error: ${err.message}`);
+  }
+});
+
+// Load Blog Posts
+async function loadBlogPosts() {
+  const container = document.getElementById("blogPostsContainer");
+  container.innerHTML = `<div style="text-align: center; padding: 2rem; color: var(--neutral-600); grid-column: 1 / -1;">Loading articles...</div>`;
+
+  try {
+    let url = "/api/v1/blog/posts";
+    if (showingBookmarks) {
+      url = "/api/v1/blog/bookmarks";
+    } else {
+      const params = new URLSearchParams();
+      if (currentBlogCategory) params.append("category", currentBlogCategory);
+      if (currentBlogSearch) params.append("search", currentBlogSearch);
+      if (currentBlogSort) params.append("sort", currentBlogSort);
+      if (showingMyPosts) params.append("myPosts", "true");
+      url += `?${params.toString()}`;
+    }
+
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${getAuthToken()}` },
+    });
+    const result = await res.json();
+
+    if (!result.success) {
+      container.innerHTML = `<div style="color: var(--danger); text-align: center; grid-column: 1 / -1;">Failed to load: ${result.error}</div>`;
+      return;
+    }
+
+    const posts = showingBookmarks ? result.data.map(b => b.post) : result.data;
+
+    if (!posts || posts.length === 0) {
+      container.innerHTML = `
+        <div style="text-align: center; padding: 3rem; color: var(--neutral-600); grid-column: 1 / -1; background: #fff; border-radius: var(--radius); border: 1px solid var(--neutral-200);">
+          <p style="font-size: 2rem; margin-bottom: 0.5rem;">📝</p>
+          <h3>No articles found</h3>
+          <p style="margin-top: 0.25rem;">${showingBookmarks ? "You have not bookmarked any articles yet." : "Be the first to share an article with your classmates!"}</p>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = posts.map((post) => `
+      <div class="card" style="display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; border-top: 4px solid var(--primary); transition: transform 0.15s ease, box-shadow 0.15s ease;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">
+        ${post.coverImage ? `
+          <div style="height: 150px; overflow: hidden; background: #e2e8f0; margin: -1.25rem -1.25rem 1rem -1.25rem;">
+            <img src="${post.coverImage}" alt="Cover" style="width: 100%; height: 100%; object-fit: cover;" onerror="this.style.display='none'" />
+          </div>
+        ` : ""}
+        <div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+            <span class="badge" style="background: #e0e7ff; color: #4338ca; font-size: 0.75rem;">${post.category}</span>
+            ${post.status && post.status !== "APPROVED" ? `
+              <span class="badge ${post.status === "PENDING" ? "badge-upcoming" : "badge-overdue"}">${post.status}</span>
+            ` : ""}
+          </div>
+          <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 0.5rem; line-height: 1.35; cursor: pointer;" onclick="openPostDetail('${post.slug || post.id}')">${post.title}</h3>
+          <p style="color: var(--neutral-600); font-size: 0.85rem; line-height: 1.5; margin-bottom: 1rem;">${post.content || ""}</p>
+        </div>
+
+        <div>
+          <div style="display: flex; align-items: center; justify-content: space-between; padding-top: 0.75rem; border-top: 1px solid var(--neutral-200); font-size: 0.8rem; color: var(--neutral-600);">
+            <span style="font-weight: 600; cursor: pointer; color: var(--primary);" onclick="openAuthorProfile('${post.author.id}')">👤 ${post.author.fullName}</span>
+            <span>👁️ ${post.views} | ❤️ ${post.likesCount} | 💬 ${post.commentsCount}</span>
+          </div>
+          <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem;">
+            <button class="btn btn-primary btn-sm" style="flex: 1; justify-content: center;" onclick="openPostDetail('${post.slug || post.id}')">📖 Read</button>
+            <button class="btn btn-secondary btn-sm" onclick="toggleBookmarkPost('${post.id}')">${post.isBookmarked ? "⭐ Saved" : "☆ Save"}</button>
+          </div>
+        </div>
+      </div>
+    `).join("");
+  } catch (err) {
+    container.innerHTML = `<div style="color: var(--danger); text-align: center; grid-column: 1 / -1;">Error: ${err.message}</div>`;
+  }
+}
+
+// Open and Read Post Detail
+async function openPostDetail(slugOrId) {
+  try {
+    const res = await fetch(`/api/v1/blog/posts/${slugOrId}`, {
+      headers: { Authorization: `Bearer ${getAuthToken()}` },
+    });
+    const result = await res.json();
+    if (!result.success) {
+      alert(`Could not load article: ${result.error}`);
+      return;
+    }
+
+    const post = result.data;
+    activeReadingPostId = post.id;
+
+    document.getElementById("articleCategoryBadge").innerText = post.category;
+    document.getElementById("articleTitle").innerText = post.title;
+    document.getElementById("articleAuthorName").innerText = `${post.author.fullName} (${post.author.campusId || "Student"})`;
+    document.getElementById("articleAuthorName").onclick = () => openAuthorProfile(post.author.id);
+    document.getElementById("authorAvatarLetter").innerText = post.author.fullName[0].toUpperCase();
+    document.getElementById("articleMetaDate").innerText = `Published ${new Date(post.createdAt).toLocaleDateString()} • 👁️ ${post.views} views`;
+
+    const coverContainer = document.getElementById("articleCoverContainer");
+    const coverImg = document.getElementById("articleCoverImg");
+    if (post.coverImage) {
+      coverImg.src = post.coverImage;
+      coverContainer.style.display = "block";
+    } else {
+      coverContainer.style.display = "none";
+    }
+
+    document.getElementById("articleContentBody").innerHTML = renderMarkdown(post.content);
+
+    // Like and Bookmark buttons
+    const likeBtn = document.getElementById("likeArticleBtn");
+    likeBtn.innerHTML = `${post.isLiked ? "❤️" : "🤍"} <span id="articleLikeCount">${post.likesCount}</span>`;
+    likeBtn.onclick = () => toggleLikePost(post.id);
+
+    const bookmarkBtn = document.getElementById("bookmarkArticleBtn");
+    bookmarkBtn.innerHTML = `${post.isBookmarked ? "⭐ Saved" : "☆ Save"}`;
+    bookmarkBtn.onclick = () => toggleBookmarkPost(post.id);
+
+    // Share button
+    document.getElementById("shareArticleBtn").onclick = () => {
+      const shareUrl = `${window.location.origin}/#blog/${post.slug}`;
+      navigator.clipboard?.writeText(shareUrl);
+      alert(`🔗 Article link copied to clipboard:\n${shareUrl}`);
+    };
+
+    // Report button
+    document.getElementById("reportArticleBtn").onclick = () => {
+      openReportModal("POST", post.id);
+    };
+
+    // Tags list
+    const tagsContainer = document.getElementById("articleTagsList");
+    tagsContainer.innerHTML = post.tags.map((t) => `<span class="badge" style="background:#f1f5f9;color:#334155;">#${t}</span>`).join("");
+
+    // Comments
+    renderComments(post.comments || []);
+
+    document.getElementById("viewPostModal").classList.remove("hidden");
+  } catch (err) {
+    alert(`Error: ${err.message}`);
+  }
+}
+
+// Render comments thread
+function renderComments(comments) {
+  document.getElementById("articleCommentsCount").innerText = comments.length;
+  const list = document.getElementById("articleCommentsList");
+
+  if (!comments || comments.length === 0) {
+    list.innerHTML = `<p style="color: var(--neutral-600); font-size: 0.9rem;">No comments yet. Start the conversation!</p>`;
+    return;
+  }
+
+  list.innerHTML = comments.map((c) => `
+    <div style="background: #f8fafc; padding: 0.85rem 1rem; border-radius: var(--radius); border: 1px solid var(--neutral-200);">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem; font-size: 0.8rem;">
+        <span style="font-weight: 700; color: var(--primary);">👤 ${c.user.fullName} (${c.user.campusId || "Student"})</span>
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+          <span style="color: var(--neutral-600);">${new Date(c.createdAt).toLocaleDateString()}</span>
+          <button class="btn btn-sm btn-danger" style="padding: 0.1rem 0.4rem; font-size: 0.7rem;" onclick="deleteComment('${c.id}')">🗑️</button>
+          <button class="btn btn-sm btn-secondary" style="padding: 0.1rem 0.4rem; font-size: 0.7rem;" onclick="openReportModal('COMMENT', '${c.id}')">🚩</button>
+        </div>
+      </div>
+      <p style="font-size: 0.9rem; line-height: 1.5; color: var(--neutral-800);">${c.content}</p>
+    </div>
+  `).join("");
+}
+
+// Add Comment Form Submission
+document.getElementById("addCommentForm")?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  if (!activeReadingPostId) return;
+
+  const content = document.getElementById("commentInput").value.trim();
+  if (!content) return;
+
+  try {
+    const res = await fetch(`/api/v1/blog/posts/${activeReadingPostId}/comments`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${getAuthToken()}`,
+      },
+      body: JSON.stringify({ content }),
+    });
+    const result = await res.json();
+    if (result.success) {
+      document.getElementById("commentInput").value = "";
+      openPostDetail(activeReadingPostId);
+    } else {
+      alert(`Error: ${result.error}`);
+    }
+  } catch (err) {
+    alert(`Error: ${err.message}`);
+  }
+});
+
+// Delete Comment
+async function deleteComment(commentId) {
+  if (!confirm("Are you sure you want to delete this comment?")) return;
+  try {
+    const res = await fetch(`/api/v1/blog/comments/${commentId}`, {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${getAuthToken()}` },
+    });
+    const result = await res.json();
+    if (result.success) {
+      if (activeReadingPostId) openPostDetail(activeReadingPostId);
+    } else {
+      alert(`Error: ${result.error}`);
+    }
+  } catch (err) {
+    alert(`Error: ${err.message}`);
+  }
+}
+
+// Toggle Like
+async function toggleLikePost(postId) {
+  try {
+    const res = await fetch(`/api/v1/blog/posts/${postId}/like`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${getAuthToken()}` },
+    });
+    const result = await res.json();
+    if (result.success) {
+      if (activeReadingPostId === postId) {
+        const likeBtn = document.getElementById("likeArticleBtn");
+        likeBtn.innerHTML = `${result.data.liked ? "❤️" : "🤍"} <span id="articleLikeCount">${result.data.likesCount}</span>`;
+      }
+      loadBlogPosts();
+    }
+  } catch (err) {
+    console.error("Like toggle failed:", err.message);
+  }
+}
+
+// Toggle Bookmark
+async function toggleBookmarkPost(postId) {
+  try {
+    const res = await fetch(`/api/v1/blog/posts/${postId}/bookmark`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${getAuthToken()}` },
+    });
+    const result = await res.json();
+    if (result.success) {
+      if (activeReadingPostId === postId) {
+        const bookmarkBtn = document.getElementById("bookmarkArticleBtn");
+        bookmarkBtn.innerHTML = `${result.data.bookmarked ? "⭐ Saved" : "☆ Save"}`;
+      }
+      loadBlogPosts();
+    }
+  } catch (err) {
+    console.error("Bookmark toggle failed:", err.message);
+  }
+}
+
+// Author Profile Modal
+async function openAuthorProfile(authorId) {
+  try {
+    const res = await fetch(`/api/v1/blog/authors/${authorId}`, {
+      headers: { Authorization: `Bearer ${getAuthToken()}` },
+    });
+    const result = await res.json();
+    if (!result.success) {
+      alert(`Could not load author profile: ${result.error}`);
+      return;
+    }
+
+    const { author, stats, posts } = result.data;
+    document.getElementById("authorProfileHeader").innerHTML = `
+      <div style="width: 56px; height: 56px; border-radius: 50%; background: var(--primary); color: #fff; margin: 0 auto 0.75rem auto; display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 700;">
+        ${author.fullName[0].toUpperCase()}
+      </div>
+      <h3 style="margin-bottom: 0.25rem;">${author.fullName}</h3>
+      <p style="color: var(--neutral-600); font-size: 0.85rem; margin-bottom: 1rem;">Campus ID: ${author.campusId || "Student"} • Member since ${new Date(author.createdAt).toLocaleDateString()}</p>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem; max-width: 400px; margin: 0 auto;">
+        <div style="background: #f1f5f9; padding: 0.75rem; border-radius: var(--radius);">
+          <div style="font-weight: 700; font-size: 1.25rem;">${stats.totalPosts}</div>
+          <div style="font-size: 0.75rem; color: var(--neutral-600);">Articles</div>
+        </div>
+        <div style="background: #f1f5f9; padding: 0.75rem; border-radius: var(--radius);">
+          <div style="font-weight: 700; font-size: 1.25rem; color: #4338ca;">${stats.totalViews}</div>
+          <div style="font-size: 0.75rem; color: var(--neutral-600);">Views</div>
+        </div>
+        <div style="background: #f1f5f9; padding: 0.75rem; border-radius: var(--radius);">
+          <div style="font-weight: 700; font-size: 1.25rem; color: #e11d48;">${stats.totalLikes}</div>
+          <div style="font-size: 0.75rem; color: var(--neutral-600);">Likes</div>
+        </div>
+      </div>
+    `;
+
+    document.getElementById("authorArticlesList").innerHTML = posts.length > 0 ? posts.map((p) => `
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem 0; border-bottom: 1px solid var(--neutral-200); font-size: 0.9rem;">
+        <div>
+          <strong style="cursor: pointer; color: var(--primary);" onclick="closeModal('authorProfileModal'); openPostDetail('${p.slug || p.id}')">${p.title}</strong>
+          <div style="font-size: 0.75rem; color: var(--neutral-600);">${p.category} • 👁️ ${p.views} • ❤️ ${p.likesCount}</div>
+        </div>
+        <button class="btn btn-sm btn-secondary" onclick="closeModal('authorProfileModal'); openPostDetail('${p.slug || p.id}')">Read</button>
+      </div>
+    `).join("") : `<p style="color: var(--neutral-600); font-size: 0.85rem;">No published articles yet.</p>`;
+
+    document.getElementById("authorProfileModal").classList.remove("hidden");
+  } catch (err) {
+    alert(`Error: ${err.message}`);
+  }
+}
+
+// Report Modal
+function openReportModal(targetType, targetId) {
+  document.getElementById("reportTargetType").value = targetType;
+  document.getElementById("reportTargetId").value = targetId;
+  document.getElementById("reportDetailsInput").value = "";
+  document.getElementById("reportContentModal").classList.remove("hidden");
+}
+
+document.getElementById("reportContentForm")?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const targetType = document.getElementById("reportTargetType").value;
+  const targetId = document.getElementById("reportTargetId").value;
+  const reason = document.getElementById("reportReasonSelect").value;
+  const details = document.getElementById("reportDetailsInput").value.trim();
+
+  const url = targetType === "POST"
+    ? `/api/v1/blog/posts/${targetId}/report`
+    : `/api/v1/blog/comments/${targetId}/report`;
+
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${getAuthToken()}`,
+      },
+      body: JSON.stringify({ reason, details }),
+    });
+    const result = await res.json();
+    if (result.success) {
+      alert("✅ Thank you. Your report has been submitted to administrators for safety review.");
+      closeModal("reportContentModal");
+    } else {
+      alert(`Error: ${result.error}`);
+    }
+  } catch (err) {
+    alert(`Error: ${err.message}`);
+  }
+});
+
+// Admin Moderation Center
+document.getElementById("viewAdminModerationBtn")?.addEventListener("click", () => {
+  loadModerationQueues();
+  document.getElementById("blogModerationModal").classList.remove("hidden");
+});
+
+document.querySelectorAll(".mod-tab-pill").forEach((pill) => {
+  pill.addEventListener("click", () => {
+    document.querySelectorAll(".mod-tab-pill").forEach((p) => {
+      p.classList.remove("active");
+      p.classList.add("btn-secondary");
+    });
+    pill.classList.add("active");
+    pill.classList.remove("btn-secondary");
+
+    if (pill.dataset.tab === "pending") {
+      document.getElementById("modPendingContainer").classList.remove("hidden");
+      document.getElementById("modReportsContainer").classList.add("hidden");
+    } else {
+      document.getElementById("modPendingContainer").classList.add("hidden");
+      document.getElementById("modReportsContainer").classList.remove("hidden");
+    }
+  });
+});
+
+async function loadModerationQueues() {
+  try {
+    // 1. Pending Posts
+    const postsRes = await fetch("/api/v1/blog/posts?status=PENDING", {
+      headers: { Authorization: `Bearer ${getAuthToken()}` },
+    });
+    const postsData = await postsRes.json();
+    const pendingPosts = postsData.data || [];
+    document.getElementById("modPendingCount").innerText = pendingPosts.length;
+
+    const pendingContainer = document.getElementById("modPendingContainer");
+    pendingContainer.innerHTML = pendingPosts.length > 0 ? pendingPosts.map((p) => `
+      <div style="background: #f8fafc; padding: 1rem; border-radius: var(--radius); border: 1px solid var(--neutral-200); margin-bottom: 1rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+          <span class="badge" style="background: #fef3c7; color: #92400e;">PENDING MODERATION</span>
+          <span style="font-size: 0.8rem; color: var(--neutral-600);">${new Date(p.createdAt).toLocaleDateString()}</span>
+        </div>
+        <h4 style="margin-bottom: 0.25rem;">${p.title}</h4>
+        <p style="font-size: 0.85rem; color: var(--neutral-600); margin-bottom: 0.75rem;">Category: <strong>${p.category}</strong> • Author: <strong>${p.author.fullName}</strong> (${p.author.campusId || "Student"})</p>
+        <p style="font-size: 0.85rem; margin-bottom: 1rem; color: var(--neutral-800);">${p.content.slice(0, 200)}...</p>
+        <div style="display: flex; gap: 0.5rem;">
+          <button class="btn btn-sm btn-success" onclick="adminModeratePost('${p.id}', 'APPROVE')">✅ Approve</button>
+          <button class="btn btn-sm btn-danger" onclick="adminModeratePost('${p.id}', 'REJECT')">❌ Reject</button>
+          <button class="btn btn-sm btn-secondary" onclick="openPostDetail('${p.slug || p.id}')">👁️ Full Preview</button>
+        </div>
+      </div>
+    `).join("") : `<p style="color: var(--neutral-600); padding: 1rem; text-align: center;">No pending articles in moderation queue.</p>`;
+
+    // 2. Content Reports
+    const repRes = await fetch("/api/v1/blog/admin/reports?status=PENDING", {
+      headers: { Authorization: `Bearer ${getAuthToken()}` },
+    });
+    const repData = await repRes.json();
+    const reports = repData.data || [];
+    document.getElementById("modReportsCount").innerText = reports.length;
+
+    const repContainer = document.getElementById("modReportsContainer");
+    repContainer.innerHTML = reports.length > 0 ? reports.map((r) => `
+      <div style="background: #f8fafc; padding: 1rem; border-radius: var(--radius); border: 1px solid var(--neutral-200); margin-bottom: 1rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+          <span class="badge badge-overdue">REPORT: ${r.reason}</span>
+          <span style="font-size: 0.8rem; color: var(--neutral-600);">${new Date(r.createdAt).toLocaleString()}</span>
+        </div>
+        <p style="font-size: 0.85rem; margin-bottom: 0.5rem;">Reported By: <strong>${r.reporter.fullName}</strong> (${r.reporter.campusId})</p>
+        ${r.post ? `<p style="font-size: 0.85rem;">Target Article: <strong>${r.post.title}</strong> by ${r.post.author.fullName}</p>` : ""}
+        ${r.comment ? `<p style="font-size: 0.85rem;">Target Comment: "<em>${r.comment.content}</em>" by ${r.comment.user.fullName}</p>` : ""}
+        ${r.details ? `<p style="font-size: 0.85rem; background: #fff; padding: 0.5rem; border-radius: 4px; border: 1px solid var(--neutral-200); margin: 0.5rem 0;">Details: ${r.details}</p>` : ""}
+        <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem;">
+          <button class="btn btn-sm btn-success" onclick="adminResolveReport('${r.id}', 'RESOLVED')">Resolve</button>
+          <button class="btn btn-sm btn-secondary" onclick="adminResolveReport('${r.id}', 'DISMISSED')">Dismiss</button>
+        </div>
+      </div>
+    `).join("") : `<p style="color: var(--neutral-600); padding: 1rem; text-align: center;">No unresolved reports in queue.</p>`;
+  } catch (err) {
+    console.error("Moderation load failed:", err.message);
+  }
+}
+
+async function adminModeratePost(postId, action) {
+  const note = prompt(`Enter optional note for ${action}:`) || undefined;
+  try {
+    const res = await fetch(`/api/v1/blog/admin/posts/${postId}/moderate`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${getAuthToken()}`,
+      },
+      body: JSON.stringify({ action, note }),
+    });
+    const result = await res.json();
+    if (result.success) {
+      alert(`Post ${action.toLowerCase()}d successfully.`);
+      loadModerationQueues();
+      loadBlogPosts();
+    } else {
+      alert(`Error: ${result.error}`);
+    }
+  } catch (err) {
+    alert(`Error: ${err.message}`);
+  }
+}
+
+async function adminResolveReport(reportId, action) {
+  try {
+    const res = await fetch(`/api/v1/blog/admin/reports/${reportId}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${getAuthToken()}`,
+      },
+      body: JSON.stringify({ action }),
+    });
+    const result = await res.json();
+    if (result.success) {
+      loadModerationQueues();
+    } else {
+      alert(`Error: ${result.error}`);
+    }
+  } catch (err) {
+    alert(`Error: ${err.message}`);
+  }
+}
 
 // Initial boot
 document.addEventListener("DOMContentLoaded", () => {

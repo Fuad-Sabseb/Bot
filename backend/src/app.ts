@@ -13,6 +13,7 @@ import notificationsRoutes from "./modules/notifications/notifications.routes";
 import materialsRoutes from "./modules/materials/materials.routes";
 import archiveRoutes from "./modules/archive/archive.routes";
 import quizzesRoutes from "./modules/quizzes/quizzes.routes";
+import blogRoutes from "./modules/blog/blog.routes";
 import { errorHandler } from "./middleware/error.middleware";
 import { csrfProtection } from "./middleware/csrf.middleware";
 import { authenticate } from "./middleware/auth.middleware";
@@ -73,6 +74,7 @@ export function createApp(): Application {
   v1Router.use("/materials", materialsRoutes);
   v1Router.use("/archive", archiveRoutes);
   v1Router.use("/quizzes", quizzesRoutes);
+  v1Router.use("/blog", blogRoutes);
 
   // Protected Profile Route (Test & Verification)
   v1Router.get("/auth/me", authenticate, (req: Request, res: Response) => {

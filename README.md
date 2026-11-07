@@ -360,6 +360,41 @@ npm test
 - `/practice [topic]` — Delivers an interactive practice question with inline buttons for option selection and instant answer feedback.
 - `🎯 Practice & Quizzes` — Interactive main menu button with shortcuts to active quizzes and practice modes.
 
+---
+
+## 14. Phase 7 Endpoints & Features Reference
+
+### Community & Student Blog System (`/api/v1/blog`)
+
+#### Student Blog Publishing & Reading
+- `POST /api/v1/blog/posts` — Publish student article, tutorial, or project idea with Markdown content, category, tags, and cover image. Generates unique SEO slug and assigns `PENDING` status for students (auto-approved for administrators).
+- `GET /api/v1/blog/posts` — List published articles with category, tag, search, and author filtering, plus sorting (`recent` by creation date, `popular` by view counter). Authors can view their own drafts via `myPosts=true`.
+- `GET /api/v1/blog/posts/:slugOrId` — Retrieve article content with formatted Markdown, author attribution, comments thread, view counter increment, like count, and user engagement states.
+- `PATCH /api/v1/blog/posts/:id` — Update article title, content, category, tags, or cover image (author or administrator only).
+- `DELETE /api/v1/blog/posts/:id` — Soft-delete article (`isDeleted = true`) (author or administrator only).
+- `POST /api/v1/blog/upload-cover` — Upload article cover image with strict MIME validation (JPEG, PNG, WEBP, GIF, max 5MB).
+
+#### Social Interactions (Likes, Comments & Bookmarks)
+- `POST /api/v1/blog/posts/:id/like` — Toggle like on an article with atomic like count recalculation.
+- `POST /api/v1/blog/posts/:id/bookmark` — Toggle bookmark on an article for reading later.
+- `GET /api/v1/blog/bookmarks` — Retrieve current user's saved bookmarks.
+- `POST /api/v1/blog/posts/:id/comments` — Post constructive comment on an article; automatically triggers in-app and Telegram notifications to the article author.
+- `DELETE /api/v1/blog/comments/:commentId` — Delete comment (comment author, article author, or administrator only).
+
+#### Author Profiles & Content Safety
+- `GET /api/v1/blog/authors/:authorId` — Author profile with cumulative statistics (total published articles, total views, total likes) and published article portfolio.
+- `POST /api/v1/blog/posts/:id/report` — Report inappropriate article with reason and details. Prevents duplicate reports from the same user.
+- `POST /api/v1/blog/comments/:commentId/report` — Report inappropriate comment for safety review.
+- `GET /api/v1/blog/admin/reports` — Administrator safety queue of pending content reports.
+- `PATCH /api/v1/blog/admin/reports/:reportId` — Resolve or dismiss content reports (`action: RESOLVED | DISMISSED`).
+- `PATCH /api/v1/blog/admin/posts/:id/moderate` — Administrator moderation action (`APPROVE`, `REJECT`, `ARCHIVE`) with moderation note and author notification. Enforces self-approval defense.
+
+### Telegram Bot Blog Integration
+- `/blog [query]` or `/articles [query]` — Discover and search recent academic articles directly from Telegram with inline buttons.
+- `blog_read_<id>` callback — Delivers formatted article snippet, author information, view/like counters, and direct Web App reading links.
+- `✍️ Student Blog & Ideas` — Main menu interactive button with quick access to student knowledge sharing.
+
+
 
 
 

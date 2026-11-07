@@ -149,6 +149,7 @@ model User {
   blogComments       BlogComment[]
   blogLikes          BlogLike[]
   bookmarks          Bookmark[]
+  blogReports        BlogReport[]         @relation("BlogReporter")
 
   // Announcements
   authoredAnnouncements Announcement[]    @relation("AnnouncementAuthor")
@@ -689,6 +690,7 @@ model BlogPost {
   comments       BlogComment[]
   likes          BlogLike[]
   bookmarks      Bookmark[]
+  reports        BlogReport[]
 
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
@@ -698,14 +700,15 @@ model BlogPost {
 }
 
 model BlogComment {
-  id        String   @id @default(uuid())
+  id        String       @id @default(uuid())
   postId    String
-  post      BlogPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  post      BlogPost     @relation(fields: [postId], references: [id], onDelete: Cascade)
   userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+  user      User         @relation(fields: [userId], references: [id], onDelete: Restrict)
   content   String
-  isDeleted Boolean  @default(false)
-  createdAt DateTime @default(now())
+  isDeleted Boolean      @default(false)
+  reports   BlogReport[]
+  createdAt DateTime     @default(now())
 
   @@index([postId])
 }
@@ -730,6 +733,27 @@ model Bookmark {
   createdAt DateTime @default(now())
 
   @@unique([postId, userId])
+}
+
+model BlogReport {
+  id           String       @id @default(uuid())
+  postId       String?
+  post         BlogPost?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  commentId    String?
+  comment      BlogComment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  reporterId   String
+  reporter     User         @relation("BlogReporter", fields: [reporterId], references: [id], onDelete: Restrict)
+  reason       String
+  details      String?
+  status       String       @default("PENDING") // PENDING, RESOLVED, DISMISSED
+  resolvedAt   DateTime?
+  resolvedById String?
+  createdAt    DateTime     @default(now())
+
+  @@index([status])
+  @@index([postId])
+  @@index([commentId])
+  @@index([reporterId])
 }
 
 // ==========================================

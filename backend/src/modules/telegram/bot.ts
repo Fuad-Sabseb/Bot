@@ -11,6 +11,7 @@ import { handleAdminCallback } from "./handlers/admin.handler";
 import { handleHelp } from "./handlers/help.handler";
 import { handleArchiveCommand, handleArchiveCallback } from "./handlers/archive.handler";
 import { handleQuizzesCommand, handlePracticeCommand, handleQuizCallback } from "./handlers/quiz.handler";
+import { handleBlogCommand, handleBlogCallback } from "./handlers/blog.handler";
 import { UsersService } from "../users/users.service";
 
 let activeBotInstance: TelegramBot | null = null;
@@ -124,6 +125,12 @@ export function initTelegramBot(): TelegramBot | null {
     await handlePracticeCommand(bot, msg.chat.id, topic);
   });
 
+  // /blog and /articles command
+  bot.onText(/\/(?:blog|articles)(?:\s+(.+))?/, async (msg, match) => {
+    const query = match ? match[1] : undefined;
+    await handleBlogCommand(bot, msg.chat.id, query);
+  });
+
   // Callback Query Dispatcher
   bot.on("callback_query", async (query) => {
     const chatId = query.message?.chat.id;
@@ -154,6 +161,10 @@ export function initTelegramBot(): TelegramBot | null {
 
     if (data === "quizzes_menu" || data.startsWith("prac_ans_")) {
       return handleQuizCallback(bot, chatId, messageId, data);
+    }
+
+    if (data === "community_blog" || data.startsWith("blog_read_")) {
+      return handleBlogCallback(bot, chatId, messageId, data);
     }
 
     if (data === "academic_archive") {

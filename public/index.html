@@ -64,6 +64,9 @@
       <button class="tab-btn" data-tab="quizzes">
         🎯 Practice & Quizzes
       </button>
+      <button class="tab-btn" data-tab="blog">
+        ✍️ Community & Blog
+      </button>
       <button class="tab-btn" data-tab="groups">
         👥 Assignment Groups
       </button>
@@ -409,6 +412,56 @@
       <!-- Container: Practice Questions List -->
       <div id="practiceContainer" class="hidden">
         <div style="text-align: center; padding: 2rem; color: var(--neutral-600);">Loading practice questions...</div>
+      </div>
+    </section>
+
+    <!-- TAB 7: COMMUNITY & STUDENT BLOG -->
+    <section id="tab-blog" class="tab-content hidden">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+        <div>
+          <h2>✍️ Student Academic Blog & Knowledge Community</h2>
+          <p style="color: var(--neutral-600); font-size: 0.9rem;">Publish tutorials, share project ideas, discuss academic subjects, and collaborate.</p>
+        </div>
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+          <button id="openCreatePostModalBtn" class="btn btn-primary">➕ Write Article</button>
+          <button id="viewBookmarksBtn" class="btn btn-secondary">⭐ Bookmarks</button>
+          <button id="viewMyPostsBtn" class="btn btn-secondary">📝 My Articles</button>
+          <button id="viewAdminModerationBtn" class="btn btn-danger" style="display: none;">🛡️ Moderation</button>
+        </div>
+      </div>
+
+      <!-- Category Filter Pills -->
+      <div style="display: flex; gap: 0.5rem; margin-bottom: 1.25rem; flex-wrap: wrap;" id="blogCategoryPills">
+        <button class="btn btn-sm blog-cat-pill active" data-category="" style="border-radius: 9999px;">🌐 All Topics</button>
+        <button class="btn btn-sm blog-cat-pill btn-secondary" data-category="Programming" style="border-radius: 9999px;">💻 Programming</button>
+        <button class="btn btn-sm blog-cat-pill btn-secondary" data-category="Software Engineering" style="border-radius: 9999px;">⚙️ Software Engineering</button>
+        <button class="btn btn-sm blog-cat-pill btn-secondary" data-category="Technology" style="border-radius: 9999px;">🚀 Technology</button>
+        <button class="btn btn-sm blog-cat-pill btn-secondary" data-category="Project Ideas" style="border-radius: 9999px;">💡 Project Ideas</button>
+        <button class="btn btn-sm blog-cat-pill btn-secondary" data-category="Academic Discussion" style="border-radius: 9999px;">📚 Academic Discussion</button>
+        <button class="btn btn-sm blog-cat-pill btn-secondary" data-category="Career Development" style="border-radius: 9999px;">💼 Career</button>
+        <button class="btn btn-sm blog-cat-pill btn-secondary" data-category="Student Experiences" style="border-radius: 9999px;">🎓 Student Life</button>
+      </div>
+
+      <!-- Filter Bar -->
+      <div class="filter-bar">
+        <div class="filter-group" style="flex: 2; min-width: 240px;">
+          <input type="text" id="blogSearchInput" placeholder="🔍 Search articles by title, content, or tags..." style="width: 100%;" />
+        </div>
+
+        <div class="filter-group">
+          <label style="font-weight: 600; font-size: 0.85rem;">Sort By:</label>
+          <select id="blogSortSelect">
+            <option value="recent">⏱️ Most Recent</option>
+            <option value="popular">🔥 Most Viewed / Popular</option>
+          </select>
+        </div>
+
+        <button id="refreshBlogBtn" class="btn btn-secondary btn-sm">🔄 Refresh</button>
+      </div>
+
+      <!-- Container: Blog Posts Grid -->
+      <div id="blogPostsContainer" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem; margin-top: 1.5rem;">
+        <div style="text-align: center; padding: 2rem; color: var(--neutral-600); grid-column: 1 / -1;">Loading articles...</div>
       </div>
     </section>
   </main>
@@ -1034,6 +1087,208 @@
       </div>
       <div id="quizAnalyticsBody" style="padding: 1rem 0;">
         <!-- Analytics metrics & student attempts table rendered dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CREATE / WRITE BLOG POST -->
+  <div id="createPostModal" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width: 760px;">
+      <div class="modal-header">
+        <h3>✍️ Publish Student Article / Idea</h3>
+        <button class="modal-close" onclick="closeModal('createPostModal')">&times;</button>
+      </div>
+
+      <form id="createPostForm">
+        <div style="margin-bottom: 1rem;">
+          <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Article Title *</label>
+          <input type="text" id="postTitleInput" required style="width: 100%; font-size: 1.05rem;" placeholder="e.g. Building a Distributed Cache from Scratch in TypeScript" />
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+          <div>
+            <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Category *</label>
+            <select id="postCategorySelect" required style="width: 100%;">
+              <option value="Programming">💻 Programming</option>
+              <option value="Software Engineering">⚙️ Software Engineering</option>
+              <option value="Technology">🚀 Technology</option>
+              <option value="Project Ideas">💡 Project Ideas</option>
+              <option value="Academic Discussion">📚 Academic Discussion</option>
+              <option value="Career Development">💼 Career Development</option>
+              <option value="Student Experiences">🎓 Student Experiences</option>
+            </select>
+          </div>
+          <div>
+            <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Tags (comma-separated)</label>
+            <input type="text" id="postTagsInput" style="width: 100%;" placeholder="e.g. distributed-systems, cache, redis" />
+          </div>
+        </div>
+
+        <div style="margin-bottom: 1rem;">
+          <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Cover Image (Optional)</label>
+          <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <input type="file" id="postCoverFileInput" accept="image/*" style="flex: 1;" />
+            <input type="hidden" id="postCoverUrl" />
+            <span id="coverUploadStatus" style="font-size: 0.85rem; color: var(--neutral-600);"></span>
+          </div>
+        </div>
+
+        <div style="margin-bottom: 1rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+            <label style="font-weight: 600;">Article Content (Markdown Supported) *</label>
+            <button type="button" id="togglePostPreviewBtn" class="btn btn-secondary btn-sm" style="font-size: 0.75rem;">👁️ Toggle Preview</button>
+          </div>
+          <textarea id="postContentInput" required rows="10" style="width: 100%; font-family: monospace; font-size: 0.9rem;" placeholder="Write your technical article, tutorial, code snippets, or project idea here using Markdown..."></textarea>
+          <div id="postPreviewBox" class="hidden" style="border: 1px solid var(--neutral-200); border-radius: var(--radius); padding: 1rem; max-height: 250px; overflow-y: auto; background: #fff; margin-top: 0.5rem;"></div>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center;">
+          🚀 Submit Article for Publication
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: VIEW / READ ARTICLE -->
+  <div id="viewPostModal" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width: 820px; max-height: 90vh; overflow-y: auto;">
+      <div class="modal-header">
+        <span id="articleCategoryBadge" class="badge" style="background: var(--primary); color: #fff;"></span>
+        <button class="modal-close" onclick="closeModal('viewPostModal')">&times;</button>
+      </div>
+
+      <div id="articleCoverContainer" style="margin-bottom: 1.25rem; display: none;">
+        <img id="articleCoverImg" src="" alt="Cover" style="width: 100%; max-height: 280px; object-fit: cover; border-radius: var(--radius);" />
+      </div>
+
+      <h1 id="articleTitle" style="font-size: 1.6rem; font-weight: 800; line-height: 1.3; margin-bottom: 0.75rem;"></h1>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--neutral-200); margin-bottom: 1.5rem;">
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <div style="width: 40px; height: 40px; border-radius: 50%; background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700;">
+            <span id="authorAvatarLetter">A</span>
+          </div>
+          <div>
+            <div id="articleAuthorName" style="font-weight: 700; cursor: pointer; color: var(--primary);"></div>
+            <div id="articleMetaDate" style="font-size: 0.8rem; color: var(--neutral-600);"></div>
+          </div>
+        </div>
+
+        <!-- Social Engagement Actions -->
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+          <button id="likeArticleBtn" class="btn btn-sm btn-secondary" style="border-radius: 9999px;">
+            ❤️ <span id="articleLikeCount">0</span>
+          </button>
+          <button id="bookmarkArticleBtn" class="btn btn-sm btn-secondary" style="border-radius: 9999px;">
+            ⭐ Save
+          </button>
+          <button id="shareArticleBtn" class="btn btn-sm btn-secondary" style="border-radius: 9999px;">
+            🔗 Share
+          </button>
+          <button id="reportArticleBtn" class="btn btn-sm btn-danger" style="border-radius: 9999px;">
+            🚩 Report
+          </button>
+        </div>
+      </div>
+
+      <!-- Article Content Body -->
+      <div id="articleContentBody" style="line-height: 1.8; font-size: 1rem; color: var(--neutral-800); margin-bottom: 2rem;"></div>
+
+      <div id="articleTagsList" style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 2rem;"></div>
+
+      <hr style="border: 0; border-top: 1px solid var(--neutral-200); margin-bottom: 1.5rem;" />
+
+      <!-- Comments Thread -->
+      <div>
+        <h3 style="margin-bottom: 1rem;">💬 Discussion (<span id="articleCommentsCount">0</span>)</h3>
+
+        <!-- Add Comment Form -->
+        <form id="addCommentForm" style="margin-bottom: 1.5rem;">
+          <textarea id="commentInput" required rows="3" style="width: 100%; margin-bottom: 0.5rem;" placeholder="Join the discussion... Be constructive and respectful."></textarea>
+          <button type="submit" class="btn btn-primary btn-sm">Post Comment</button>
+        </form>
+
+        <!-- Comments List -->
+        <div id="articleCommentsList" style="display: flex; flex-direction: column; gap: 1rem;">
+          <!-- Rendered dynamically -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: AUTHOR PROFILE -->
+  <div id="authorProfileModal" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width: 650px;">
+      <div class="modal-header">
+        <h3 id="authorProfileTitle">Student Author Profile</h3>
+        <button class="modal-close" onclick="closeModal('authorProfileModal')">&times;</button>
+      </div>
+
+      <div id="authorProfileHeader" style="text-align: center; padding: 1rem 0; border-bottom: 1px solid var(--neutral-200); margin-bottom: 1rem;">
+        <!-- Populated dynamically -->
+      </div>
+
+      <h4>Published Articles</h4>
+      <div id="authorArticlesList" style="max-height: 300px; overflow-y: auto; margin-top: 0.75rem;">
+        <!-- Populated dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: REPORT CONTENT -->
+  <div id="reportContentModal" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width: 480px;">
+      <div class="modal-header">
+        <h3>🚩 Report Inappropriate Content</h3>
+        <button class="modal-close" onclick="closeModal('reportContentModal')">&times;</button>
+      </div>
+
+      <form id="reportContentForm">
+        <input type="hidden" id="reportTargetType" value="POST" />
+        <input type="hidden" id="reportTargetId" value="" />
+
+        <div style="margin-bottom: 1rem;">
+          <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Reason for Report *</label>
+          <select id="reportReasonSelect" required style="width: 100%;">
+            <option value="Inappropriate Content">Inappropriate Content</option>
+            <option value="Academic Misconduct / Plagiarism">Academic Misconduct / Plagiarism</option>
+            <option value="Harassment / Hate Speech">Harassment / Hate Speech</option>
+            <option value="Spam / Advertisements">Spam / Advertisements</option>
+            <option value="Other">Other Policy Violation</option>
+          </select>
+        </div>
+
+        <div style="margin-bottom: 1.25rem;">
+          <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Additional Details (Optional)</label>
+          <textarea id="reportDetailsInput" rows="3" style="width: 100%;" placeholder="Explain why this content violates academic community standards..."></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-danger" style="width: 100%; justify-content: center;">
+          Submit Report to Moderators
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: BLOG CONTENT MODERATION (ADMIN) -->
+  <div id="blogModerationModal" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width: 800px;">
+      <div class="modal-header">
+        <h3>🛡️ Content Moderation & Safety Center</h3>
+        <button class="modal-close" onclick="closeModal('blogModerationModal')">&times;</button>
+      </div>
+
+      <div style="display: flex; gap: 0.5rem; margin-bottom: 1.25rem;">
+        <button class="btn btn-sm mod-tab-pill active" data-tab="pending">⏳ Pending Posts (<span id="modPendingCount">0</span>)</button>
+        <button class="btn btn-sm mod-tab-pill btn-secondary" data-tab="reports">🚩 Reports Queue (<span id="modReportsCount">0</span>)</button>
+      </div>
+
+      <div id="modPendingContainer">
+        <!-- Rendered dynamically -->
+      </div>
+
+      <div id="modReportsContainer" class="hidden">
+        <!-- Rendered dynamically -->
       </div>
     </div>
   </div>
