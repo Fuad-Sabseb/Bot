@@ -112,6 +112,16 @@ document.querySelectorAll(".tab-btn").forEach((btn) => {
     if (target) target.classList.remove("hidden");
 
     if (btn.dataset.tab === "dashboard") loadDashboard();
+    if (btn.dataset.tab === "materials") {
+      loadMaterials();
+      loadMaterialsStats();
+      loadMaterialsOfferings();
+    }
+    if (btn.dataset.tab === "archive") {
+      loadArchive();
+      loadArchiveStats();
+      loadArchiveOfferings();
+    }
     if (btn.dataset.tab === "groups") loadGroupAssignmentsDropdown();
     if (btn.dataset.tab === "teacher") loadTeacherOfferings();
   });
@@ -746,6 +756,604 @@ document.getElementById("openCreateAssignmentModalBtn")?.addEventListener("click
 
 document.getElementById("openCreateGroupBtn")?.addEventListener("click", () => {
   document.getElementById("createGroupModal").classList.remove("hidden");
+});
+
+// ----------------------------------------------------
+// 6. LEARNING MATERIALS & ACADEMIC RESOURCES
+// ----------------------------------------------------
+async function loadMaterials() {
+  const container = document.getElementById("materialsList");
+  container.innerHTML = '<div style="text-align:center; padding: 2rem;">Loading academic resources...</div>';
+
+  const category = document.getElementById("materialsCategoryFilter")?.value || "";
+  const courseOfferingId = document.getElementById("materialsOfferingFilter")?.value || "";
+  const search = document.getElementById("materialsSearchInput")?.value?.trim() || "";
+  const sortBy = document.getElementById("materialsSortBy")?.value || "newest";
+
+  const params = new URLSearchParams();
+  if (category) params.append("category", category);
+  if (courseOfferingId) params.append("courseOfferingId", courseOfferingId);
+  if (search) params.append("search", search);
+  if (sortBy) params.append("sortBy", sortBy);
+
+  try {
+    const res = await fetch(`/api/v1/materials?${params.toString()}`, {
+      headers: getAuthHeader(),
+    });
+    const result = await res.json();
+
+    if (!result.success) {
+      container.innerHTML = `<div style="text-align:center; padding: 2rem; color: var(--danger);">${result.error}</div>`;
+      return;
+    }
+
+    const { materials, pagination } = result.data;
+
+    if (materials.length === 0) {
+      container.innerHTML = `<div style="text-align: center; padding: 3rem; background: white; border-radius: 8px; color: var(--neutral-600);">No academic resources found matching your search.</div>`;
+      return;
+    }
+
+    container.innerHTML = materials.map((m) => renderMaterialCard(m)).join("");
+
+    // Check if user has teacher/admin rights to show moderation queue
+    checkAndLoadModerationQueue();
+  } catch (err) {
+    container.innerHTML = `<div style="text-align:center; padding: 2rem; color: var(--danger);">${err.message}</div>`;
+  }
+}
+
+function renderMaterialCard(m) {
+  const sizeMb = (m.fileSize / (1024 * 1024)).toFixed(2);
+  const sizeKb = Math.round(m.fileSize / 1024);
+  const sizeStr = m.fileSize >= 1024 * 1024 ? `${sizeMb} MB` : `${sizeKb} KB`;
+
+  const categoryLabel = m.category.replace(/_/g, " ");
+
+  const isPending = m.status === "PENDING";
+  const isRejected = m.status === "REJECTED";
+
+  return `
+    <div class="assignment-card" style="margin-bottom: 1rem;">
+      <div class="card-header">
+        <div>
+          <div class="course-tag">${m.courseOffering?.course?.code || "COURSE"} — ${m.courseOffering?.course?.title || "Academic Course"}</div>
+          <h3 class="card-title">${m.title}</h3>
+        </div>
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+          <span class="badge" style="background: #e0e7ff; color: #3730a3;">📂 ${categoryLabel}</span>
+          ${isPending ? '<span class="badge badge-late">⏳ Pending Review</span>' : ""}
+          ${isRejected ? '<span class="badge badge-overdue">❌ Rejected</span>' : ""}
+        </div>
+      </div>
+
+      ${m.description ? `<p style="font-size: 0.9rem; color: var(--neutral-600); margin-bottom: 0.75rem;">${m.description}</p>` : ""}
+
+      <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; font-size: 0.85rem; color: var(--neutral-600);">
+        <div>📄 <strong>File:</strong> ${m.fileName} (${sizeStr})</div>
+        <div>👤 <strong>Uploaded By:</strong> ${m.uploader?.fullName || "Faculty"}</div>
+        <div>📥 <strong>Downloads:</strong> ${m.downloads}</div>
+        <div>📅 <strong>Date:</strong> ${new Date(m.createdAt).toLocaleDateString()}</div>
+      </div>
+
+      ${m.tags ? `<div style="margin-top: 0.5rem; font-size: 0.8rem; color: var(--accent);">🏷️ Tags: ${m.tags}</div>` : ""}
+
+      <div class="card-footer">
+        <div>
+          ${m.moderationNote ? `<span style="font-size: 0.8rem; color: #b45309;">Note: ${m.moderationNote}</span>` : ""}
+        </div>
+        <div>
+          <a href="/api/v1/materials/${m.id}/download" class="btn btn-primary btn-sm" download target="_blank">
+            📥 Download Resource
+          </a>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function loadMaterialsStats() {
+  try {
+    const res = await fetch("/api/v1/materials/stats", {
+      headers: getAuthHeader(),
+    });
+    const result = await res.json();
+    if (!result.success) return;
+
+    document.getElementById("metricMaterialsTotal").innerText = result.data.totalResources;
+    document.getElementById("metricMaterialsDownloads").innerText = result.data.totalDownloads;
+  } catch (err) {
+    console.error("Failed to load materials stats:", err);
+  }
+}
+
+async function loadMaterialsOfferings() {
+  const selectFilter = document.getElementById("materialsOfferingFilter");
+  const selectUpload = document.getElementById("matCourseOfferingSelect");
+
+  try {
+    const res = await fetch("/api/v1/academic/my-courses", {
+      headers: getAuthHeader(),
+    });
+    const result = await res.json();
+    if (!result.success) return;
+
+    const allOfferings = [
+      ...(result.data.enrolledOfferings || []),
+      ...(result.data.instructedOfferings || []),
+    ];
+
+    // Deduplicate offerings by id
+    const unique = Array.from(new Map(allOfferings.map((o) => [o.id, o])).values());
+
+    const optionsHtml = unique
+      .map((o) => `<option value="${o.id}">${o.course.code} — ${o.course.title} (${o.class.name})</option>`)
+      .join("");
+
+    if (selectFilter) {
+      selectFilter.innerHTML = '<option value="">All Enrolled Courses</option>' + optionsHtml;
+    }
+    if (selectUpload) {
+      selectUpload.innerHTML = '<option value="">Select course offering...</option>' + optionsHtml;
+    }
+  } catch (err) {
+    console.error("Failed to load course offerings:", err);
+  }
+}
+
+async function checkAndLoadModerationQueue() {
+  const section = document.getElementById("materialsModerationSection");
+  const list = document.getElementById("pendingModerationList");
+  const badge = document.getElementById("pendingModerationBadge");
+
+  try {
+    const res = await fetch("/api/v1/materials/moderation/queue", {
+      headers: getAuthHeader(),
+    });
+    const result = await res.json();
+
+    if (!result.success || !result.data || result.data.length === 0) {
+      section.classList.add("hidden");
+      return;
+    }
+
+    section.classList.remove("hidden");
+    badge.innerText = `${result.data.length} Pending`;
+
+    list.innerHTML = result.data
+      .map(
+        (item) => `
+        <div style="background: white; border-radius: 6px; padding: 0.75rem 1rem; margin-top: 0.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+          <div>
+            <strong>${item.title}</strong> (${item.fileName})
+            <div style="font-size: 0.8rem; color: var(--neutral-600);">
+              Course: ${item.courseOffering.course.title} | Uploader: ${item.uploader.fullName} | Cat: ${item.category}
+            </div>
+          </div>
+          <div style="display: flex; gap: 0.5rem;">
+            <button class="btn btn-success btn-sm" onclick="openModerateModal('${item.id}', '${item.title.replace(/'/g, "\\'")}', 'APPROVED')">
+              ✅ Approve
+            </button>
+            <button class="btn btn-danger btn-sm" onclick="openModerateModal('${item.id}', '${item.title.replace(/'/g, "\\'")}', 'REJECTED')">
+              ❌ Reject
+            </button>
+          </div>
+        </div>
+      `
+      )
+      .join("");
+  } catch (err) {
+    section.classList.add("hidden");
+  }
+}
+
+function openModerateModal(materialId, title, defaultAction) {
+  document.getElementById("modMaterialId").value = materialId;
+  document.getElementById("modActionSelect").value = defaultAction;
+  document.getElementById("modMaterialDetails").innerHTML = `
+    <p><strong>Reviewing Resource:</strong> ${title}</p>
+  `;
+  document.getElementById("moderateMaterialModal").classList.remove("hidden");
+}
+
+document.getElementById("moderateMaterialForm")?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const materialId = document.getElementById("modMaterialId").value;
+  const status = document.getElementById("modActionSelect").value;
+  const note = document.getElementById("modNoteInput").value;
+
+  try {
+    const res = await fetch(`/api/v1/materials/${materialId}/moderate`, {
+      method: "PATCH",
+      headers: { ...getAuthHeader(), "Content-Type": "application/json" },
+      body: JSON.stringify({ status, note }),
+    });
+    const result = await res.json();
+
+    if (!result.success) return alert(result.error);
+
+    alert(`✅ Resource status updated to: ${status}`);
+    closeModal("moderateMaterialModal");
+    loadMaterials();
+    loadMaterialsStats();
+  } catch (err) {
+    alert(err.message);
+  }
+});
+
+// Upload Material Form Handler
+document.getElementById("openUploadMaterialModalBtn")?.addEventListener("click", () => {
+  loadMaterialsOfferings();
+  document.getElementById("uploadMaterialModal").classList.remove("hidden");
+});
+
+document.getElementById("uploadMaterialForm")?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const fileInput = document.getElementById("matFileInput");
+  if (!fileInput.files || fileInput.files.length === 0) {
+    alert("Please select a file to upload.");
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append("title", document.getElementById("matTitle").value.trim());
+  formData.append("description", document.getElementById("matDescription").value.trim());
+  formData.append("category", document.getElementById("matCategory").value);
+  formData.append("courseOfferingId", document.getElementById("matCourseOfferingSelect").value);
+  formData.append("tags", document.getElementById("matTags").value.trim());
+  formData.append("file", fileInput.files[0]);
+
+  const submitBtn = document.getElementById("uploadMaterialSubmitBtn");
+  submitBtn.disabled = true;
+  submitBtn.innerText = "Uploading & Hashing...";
+
+  try {
+    const res = await fetch("/api/v1/materials", {
+      method: "POST",
+      headers: getAuthHeader(),
+      body: formData,
+    });
+    const result = await res.json();
+
+    if (!result.success) {
+      alert(`Upload Error: ${result.error}`);
+    } else {
+      const isApproved = result.data.status === "APPROVED";
+      alert(isApproved ? "✅ Resource published directly!" : "ℹ️ Resource submitted for faculty moderation!");
+      closeModal("uploadMaterialModal");
+      document.getElementById("uploadMaterialForm").reset();
+      loadMaterials();
+      loadMaterialsStats();
+    }
+  } catch (err) {
+    alert(`Upload failed: ${err.message}`);
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.innerText = "🚀 Publish Resource";
+  }
+});
+
+// Materials Filter Listeners
+document.getElementById("materialsCategoryFilter")?.addEventListener("change", loadMaterials);
+document.getElementById("materialsOfferingFilter")?.addEventListener("change", loadMaterials);
+document.getElementById("materialsSortBy")?.addEventListener("change", loadMaterials);
+document.getElementById("refreshMaterialsBtn")?.addEventListener("click", () => {
+  loadMaterials();
+  loadMaterialsStats();
+});
+document.getElementById("materialsSearchInput")?.addEventListener("keyup", (e) => {
+  if (e.key === "Enter") loadMaterials();
+});
+
+// Archive Filter Listeners
+// ----------------------------------------------------
+// 6. ACADEMIC ARCHIVE & PAST EXAMS
+// ----------------------------------------------------
+let activeArchiveType = "";
+
+document.querySelectorAll(".archive-type-pill").forEach((pill) => {
+  pill.addEventListener("click", () => {
+    document.querySelectorAll(".archive-type-pill").forEach((p) => {
+      p.classList.remove("active");
+      p.classList.add("btn-secondary");
+    });
+    pill.classList.add("active");
+    pill.classList.remove("btn-secondary");
+    activeArchiveType = pill.dataset.type || "";
+    loadArchive();
+  });
+});
+
+async function loadArchiveOfferings() {
+  const selectFilter = document.getElementById("archiveOfferingFilter");
+  const selectUpload = document.getElementById("arcCourseOfferingSelect");
+  try {
+    const res = await fetch("/api/v1/academic/my-courses", {
+      headers: getAuthHeader(),
+    });
+    const result = await res.json();
+    if (!result.success) return;
+
+    const allOfferings = [
+      ...(result.data.enrolledOfferings || []),
+      ...(result.data.instructedOfferings || []),
+    ];
+    const unique = Array.from(new Map(allOfferings.map((o) => [o.id, o])).values());
+    const optionsHtml = unique
+      .map((o) => `<option value="${o.id}">${o.course.code} — ${o.course.title} (${o.class.name})</option>`)
+      .join("");
+
+    if (selectFilter) {
+      selectFilter.innerHTML = '<option value="">All Courses</option>' + optionsHtml;
+    }
+    if (selectUpload) {
+      selectUpload.innerHTML = '<option value="">Select course offering...</option>' + optionsHtml;
+    }
+  } catch (err) {
+    console.error("Failed to load archive course offerings:", err);
+  }
+}
+
+async function loadArchiveStats() {
+  try {
+    await fetch("/api/v1/archive/stats", { headers: getAuthHeader() });
+  } catch (err) {
+    console.error("Archive stats error:", err);
+  }
+}
+
+async function checkAndLoadArchiveModerationQueue() {
+  const section = document.getElementById("archiveModerationSection");
+  const list = document.getElementById("archivePendingList");
+  const badge = document.getElementById("archivePendingBadge");
+
+  try {
+    const res = await fetch("/api/v1/archive/moderation/queue", {
+      headers: getAuthHeader(),
+    });
+    const result = await res.json();
+
+    if (!result.success || !result.data || result.data.length === 0) {
+      section.classList.add("hidden");
+      return;
+    }
+
+    section.classList.remove("hidden");
+    badge.innerText = `${result.data.length} Pending`;
+
+    list.innerHTML = result.data
+      .map(
+        (item) => `
+        <div style="background: white; border-radius: 6px; padding: 0.75rem 1rem; margin-top: 0.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+          <div>
+            <strong>${item.title}</strong> (${item.fileName})
+            <div style="font-size: 0.8rem; color: var(--neutral-600);">
+              Course: ${item.courseOffering.course.code} | Type: ${item.resourceType}${item.assessmentType ? ` [${item.assessmentType}]` : ""} | Year: ${item.examYear || "N/A"} | Uploader: ${item.uploader.fullName}
+            </div>
+          </div>
+          <div style="display: flex; gap: 0.5rem;">
+            <button class="btn btn-success btn-sm" onclick="openModerateArchiveModal('${item.id}', '${item.title.replace(/'/g, "\\'")}', 'APPROVE')">
+              ✅ Review & Approve
+            </button>
+            <button class="btn btn-danger btn-sm" onclick="openModerateArchiveModal('${item.id}', '${item.title.replace(/'/g, "\\'")}', 'REJECT')">
+              ❌ Reject
+            </button>
+          </div>
+        </div>
+      `
+      )
+      .join("");
+  } catch (err) {
+    section.classList.add("hidden");
+  }
+}
+
+async function loadArchive() {
+  const container = document.getElementById("archiveList");
+  container.innerHTML = '<div style="text-align: center; padding: 2rem;">Loading academic archive...</div>';
+
+  checkAndLoadArchiveModerationQueue();
+
+  const search = document.getElementById("archiveSearchInput")?.value.trim() || "";
+  const assessmentType = document.getElementById("archiveAssessmentFilter")?.value || "";
+  const examYear = document.getElementById("archiveYearFilter")?.value || "";
+  const isOfficial = document.getElementById("archiveOfficialFilter")?.value || "";
+  const courseOfferingId = document.getElementById("archiveOfferingFilter")?.value || "";
+  const sortBy = document.getElementById("archiveSortBy")?.value || "newest";
+
+  const params = new URLSearchParams();
+  if (activeArchiveType) params.append("resourceType", activeArchiveType);
+  if (assessmentType) params.append("assessmentType", assessmentType);
+  if (examYear) params.append("examYear", examYear);
+  if (isOfficial) params.append("isOfficial", isOfficial);
+  if (courseOfferingId) params.append("courseOfferingId", courseOfferingId);
+  if (sortBy) params.append("sortBy", sortBy);
+  if (search) params.append("search", search);
+
+  try {
+    const res = await fetch(`/api/v1/archive?${params.toString()}`, {
+      headers: getAuthHeader(),
+    });
+    const result = await res.json();
+
+    if (!result.success || !result.data.resources || result.data.resources.length === 0) {
+      container.innerHTML = `
+        <div style="text-align: center; padding: 3rem; background: white; border-radius: 8px; border: 1px solid var(--neutral-200);">
+          <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">🏛️</div>
+          <h3>No Academic Archive Materials Found</h3>
+          <p style="color: var(--neutral-600); margin-top: 0.5rem;">
+            ${search ? `No results matching "${search}".` : "Be the first to contribute past exams, solutions, or project archives."}
+          </p>
+          <button class="btn btn-primary" style="margin-top: 1rem;" onclick="document.getElementById('openUploadArchiveBtn').click()">
+            ➕ Contribute Past Paper or Project
+          </button>
+        </div>
+      `;
+      return;
+    }
+
+    container.innerHTML = result.data.resources.map(renderArchiveCard).join("");
+  } catch (err) {
+    container.innerHTML = `<div style="color: var(--danger); text-align: center; padding: 2rem;">${err.message}</div>`;
+  }
+}
+
+function renderArchiveCard(a) {
+  const sizeMb = (a.fileSize / (1024 * 1024)).toFixed(2);
+  const sizeKb = Math.round(a.fileSize / 1024);
+  const sizeStr = a.fileSize >= 1024 * 1024 ? `${sizeMb} MB` : `${sizeKb} KB`;
+
+  const isPending = a.status === "PENDING";
+  const isRejected = a.status === "REJECTED";
+
+  const officialBadge = a.isOfficial
+    ? '<span class="badge" style="background: #fef08a; color: #854d0e; font-weight: 700;">⭐ Official Solution</span>'
+    : '<span class="badge" style="background: #f1f5f9; color: #475569;">👤 Student Reference</span>';
+
+  const typeIcon = a.resourceType === "PAST_EXAM" ? "📝" : a.resourceType === "PROJECT" ? "💻" : a.resourceType === "SOLUTION" ? "💡" : "📚";
+
+  return `
+    <div class="assignment-card" style="margin-bottom: 1rem;">
+      <div class="card-header">
+        <div>
+          <div class="course-tag">${a.courseOffering?.course?.code || "COURSE"} — ${a.courseOffering?.course?.title || "Course"}</div>
+          <h3 class="card-title">${typeIcon} ${a.title}</h3>
+        </div>
+        <div style="display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap;">
+          ${officialBadge}
+          ${a.examYear ? `<span class="badge" style="background: #e2e8f0; color: #1e293b;">📅 ${a.examYear}</span>` : ""}
+          ${a.assessmentType ? `<span class="badge" style="background: #ede9fe; color: #5b21b6;">${a.assessmentType}</span>` : ""}
+          ${isPending ? '<span class="badge badge-late">⏳ Pending Review</span>' : ""}
+          ${isRejected ? '<span class="badge badge-overdue">❌ Rejected</span>' : ""}
+        </div>
+      </div>
+
+      ${a.description ? `<p style="font-size: 0.9rem; color: var(--neutral-600); margin-bottom: 0.75rem;">${a.description}</p>` : ""}
+
+      <div style="display: flex; gap: 1rem; flex-wrap: wrap; align-items: center; font-size: 0.85rem; color: var(--neutral-600);">
+        <div>💾 <strong>File:</strong> ${a.fileName} (${sizeStr})</div>
+        <div>👤 <strong>Uploaded By:</strong> ${a.uploader?.fullName || "Contributor"}</div>
+        <div>📥 <strong>Downloads:</strong> ${a.downloads}</div>
+        <div>🗓️ <strong>Academic Year:</strong> ${a.academicYearStr || "N/A"} (Semester ${a.semesterNum || 1})</div>
+      </div>
+
+      ${a.tags ? `<div style="margin-top: 0.5rem; font-size: 0.8rem; color: var(--accent);">🏷️ Tags: ${a.tags}</div>` : ""}
+
+      <div class="card-footer">
+        <div>
+          ${a.moderationNote ? `<span style="font-size: 0.8rem; color: #b45309;">Note: ${a.moderationNote}</span>` : ""}
+        </div>
+        <div>
+          <a href="/api/v1/archive/${a.id}/download" class="btn btn-primary btn-sm" download target="_blank">
+            📥 Download Archive File
+          </a>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function openModerateArchiveModal(resourceId, title, defaultAction) {
+  document.getElementById("modArchiveId").value = resourceId;
+  document.getElementById("modArchiveDecision").value = defaultAction;
+  document.getElementById("modArchiveDetails").innerHTML = `
+    <p><strong>Reviewing Archive Submission:</strong> ${title}</p>
+  `;
+  document.getElementById("moderateArchiveModal").classList.remove("hidden");
+}
+
+document.getElementById("moderateArchiveForm")?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const resourceId = document.getElementById("modArchiveId").value;
+  const action = document.getElementById("modArchiveDecision").value;
+  const isOfficial = document.getElementById("modArchiveIsOfficial").checked;
+  const note = document.getElementById("modArchiveNote").value;
+
+  try {
+    const res = await fetch(`/api/v1/archive/${resourceId}/moderate`, {
+      method: "PATCH",
+      headers: { ...getAuthHeader(), "Content-Type": "application/json" },
+      body: JSON.stringify({ action, note, isOfficial }),
+    });
+    const result = await res.json();
+
+    if (!result.success) return alert(result.error);
+
+    alert(`✅ Archive resource ${action.toLowerCase()}d successfully!`);
+    closeModal("moderateArchiveModal");
+    loadArchive();
+    loadArchiveStats();
+  } catch (err) {
+    alert(err.message);
+  }
+});
+
+document.getElementById("openUploadArchiveBtn")?.addEventListener("click", () => {
+  loadArchiveOfferings();
+  document.getElementById("uploadArchiveModal").classList.remove("hidden");
+});
+
+document.getElementById("uploadArchiveForm")?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const fileInput = document.getElementById("arcFileInput");
+  if (!fileInput.files || fileInput.files.length === 0) {
+    alert("Please select a past exam, project, or solution file to upload.");
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append("title", document.getElementById("arcTitle").value.trim());
+  formData.append("description", document.getElementById("arcDescription").value.trim());
+  formData.append("resourceType", document.getElementById("arcResourceTypeSelect").value);
+  formData.append("assessmentType", document.getElementById("arcAssessmentTypeSelect").value);
+  formData.append("courseOfferingId", document.getElementById("arcCourseOfferingSelect").value);
+  const examYear = document.getElementById("arcExamYear").value;
+  if (examYear) formData.append("examYear", examYear);
+  formData.append("isOfficial", document.getElementById("arcIsOfficial").checked);
+  formData.append("tags", document.getElementById("arcTags").value.trim());
+  formData.append("file", fileInput.files[0]);
+
+  const submitBtn = document.getElementById("uploadArchiveSubmitBtn");
+  submitBtn.disabled = true;
+  submitBtn.innerText = "Uploading & Archiving...";
+
+  try {
+    const res = await fetch("/api/v1/archive", {
+      method: "POST",
+      headers: getAuthHeader(),
+      body: formData,
+    });
+    const result = await res.json();
+
+    if (!result.success) {
+      alert(`Archive Error: ${result.error}`);
+    } else {
+      const isApproved = result.data.status === "APPROVED";
+      alert(isApproved ? "✅ Archived resource published directly!" : "ℹ️ Resource submitted for faculty review!");
+      closeModal("uploadArchiveModal");
+      document.getElementById("uploadArchiveForm").reset();
+      loadArchive();
+      loadArchiveStats();
+    }
+  } catch (err) {
+    alert(`Upload failed: ${err.message}`);
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.innerText = "🚀 Submit to Archive";
+  }
+});
+
+document.getElementById("archiveAssessmentFilter")?.addEventListener("change", loadArchive);
+document.getElementById("archiveYearFilter")?.addEventListener("change", loadArchive);
+document.getElementById("archiveOfficialFilter")?.addEventListener("change", loadArchive);
+document.getElementById("archiveOfferingFilter")?.addEventListener("change", loadArchive);
+document.getElementById("archiveSortBy")?.addEventListener("change", loadArchive);
+document.getElementById("refreshArchiveBtn")?.addEventListener("click", () => {
+  loadArchive();
+  loadArchiveStats();
+});
+document.getElementById("archiveSearchInput")?.addEventListener("keyup", (e) => {
+  if (e.key === "Enter") loadArchive();
 });
 
 // Initial boot
