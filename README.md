@@ -200,7 +200,7 @@ Run the full automated test suite against the PostgreSQL test database:
 npm test
 ```
 
-### Test Coverage (74/74 Tests Passing):
+### Test Coverage (92/92 Tests Passing):
 1. `database.test.ts` (7 tests): XOR submission checks, active version uniqueness, single current academic year/semester, positive numeric rules.
 2. `migration.test.ts` (4 tests): Reconciliation of 97 IDs and 5 feedbacks, second-run idempotency, exact matching, SHA-256 manifest.
 3. `auth.test.ts` (7 tests): Registration, duplicate ID prevention, invalid credentials, token rotation, 10-second grace window, replay detection.
@@ -208,6 +208,7 @@ npm test
 5. `telegram.test.ts` (9 tests): Substring rejection, one-time invite generation, feedback persistence, announcement access denial, real-time admin statistics, safe filename sanitization.
 6. `phase2.academic.test.ts` (17 tests): Academic year/semester creation and switching, class cohorts, course catalog, course offerings, instructor assignments, student individual and batch class enrollments, teacher provisioning, class rep promotion, user suspension session revocation, Telegram OTP account-linking, and contextual role-based dashboards (Admin, Teacher, Class Rep, Student).
 7. `phase3.assignments.test.ts` (27 tests): Assignment creation with attachments, deadline and cutoff validations, role scoping (Teacher vs Class Rep vs Student), student assignment dashboard with countdowns and status filters, individual submissions with collision-free storage and SHA-256, resubmission versioning (v1 archived, v2 current), personal submission history, group formation and leadership, uniqueness of membership per assignment, group locking upon submission, late submission grace detection, cutoff date rejection, teacher grading with score validation and feedback, automated GRADE_RELEASED notification dispatch, student grade privacy enforcement, notification preferences and in-app/Telegram reminder dispatch, and secure download with path-traversal protection.
+8. `phase4.materials.test.ts` (18 tests): Learning material upload with MIME and file-size validation, automatic approval for instructors/admins, pending moderation workflow for students/class reps, course offering and category filtering, full-text keyword search across title/description/tags, ordinary student access restrictions (unapproved materials hidden), instructor moderation queue retrieval, moderation approval with automated enrolled student notifications and Telegram alerts, moderation rejection with reviewer note, atomic download tracking and content disposition, non-enrolled user download denial (403 Forbidden), resource metadata updates, unauthorized modification prevention, soft-deletion (`isDeleted = true`), admin permanent storage purge, and academic resource aggregate metrics.
 
 ---
 
@@ -288,5 +289,42 @@ npm test
 - Automated calculation of reminders for `THREE_DAYS`, `ONE_DAY`, and `TWO_HOURS` before due date.
 - Cancels pending reminders when student or group successfully submits.
 - Periodic batch processor `ReminderService.processDueReminders()` delivers in-app and Telegram notifications.
+
+---
+
+## 11. Phase 4 Endpoints & Features Reference
+
+### Academic Resources & Learning Materials (`/api/v1/materials`)
+- `POST /api/v1/materials` — Upload academic resource file (PDF, PPTX, DOCX, TXT/MD/Code, ZIP, images up to 100MB). Instructors and Admins auto-approved; students/class reps placed in `PENDING` moderation.
+- `GET /api/v1/materials` — Discover and filter learning materials by `category`, `courseOfferingId`, `courseId`, `academicYearId`, `semesterId`, full-text `search`, and sorted by `newest`, `downloads`, or `title`. Unapproved materials are strictly hidden from ordinary students.
+- `GET /api/v1/materials/stats` — Aggregate metrics: total approved resources, total downloads, category distribution, and top 5 most downloaded resources.
+- `GET /api/v1/materials/moderation/queue` — Faculty/Admin moderation queue listing pending resources scoped to instructed courses.
+- `GET /api/v1/materials/:id` — Detailed resource view with course offering, academic year, semester, and uploader information.
+- `PATCH /api/v1/materials/:id` — Update resource metadata (`title`, `description`, `category`, `tags`).
+- `DELETE /api/v1/materials/:id` — Soft-delete resource (`isDeleted = true`). Admins may provide `?purge=true` to delete the database record and physically purge the file from disk.
+- `GET /api/v1/materials/:id/download` — Securely stream resource file with atomic download count increment. Restricted to enrolled students, assigned instructors, and Admins.
+- `PATCH /api/v1/materials/:id/moderate` — Faculty/Admin moderation action (`APPROVED`, `REJECTED`, `ARCHIVED`) with optional reviewer feedback note. Automatically dispatches `MATERIAL_NEW` notifications and Telegram alerts upon approval.
+
+---
+
+## 12. Phase 5 Endpoints & Features Reference
+
+### Previous-Year Examination & Project Archive System (`/api/v1/archive`)
+- `POST /api/v1/archive` — Upload an academic archive resource (PDF, PPTX, DOCX, ZIP project archives, Code up to 100MB). Instructors/Admins auto-approved with ability to certify official department answer keys; students and class reps enter `PENDING` moderation queue and cannot self-certify `isOfficial: true`.
+- `GET /api/v1/archive` — Search, filter, and paginate academic archive resources. Supports filtering by `courseId`, `courseOfferingId`, `academicYearStr`, `semesterNum`, `examYear`, `resourceType` (`PAST_EXAM`, `PROJECT`, `SOLUTION`, `REFERENCE`), `assessmentType` (`MIDTERM`, `FINAL`, `QUIZ`, `LAB_EXAM`, `GRADUATION_PROJECT`, `TERM_PROJECT`, `ASSIGNMENT`), `isOfficial`, and full-text keyword `search`.
+- `GET /api/v1/archive/stats` — Aggregate metrics: total approved archive materials, pending moderation count, official department solutions, total downloads, breakdown by resource/assessment type, and top 5 downloaded resources.
+- `GET /api/v1/archive/moderation/queue` — Faculty/Admin moderation queue listing pending student-contributed exams and projects.
+- `GET /api/v1/archive/:id` — Retrieve detailed archive item with full course offering, exam year, and uploader attribution.
+- `PATCH /api/v1/archive/:id` — Update archive metadata (`title`, `description`, `resourceType`, `assessmentType`, `examYear`, `tags`, `isOfficial`). Enforces that students cannot toggle `isOfficial: true`.
+- `DELETE /api/v1/archive/:id` — Soft-delete archive entry (`isDeleted = true`). Admins may provide `?hard=true` to permanently purge database record and physical disk file.
+- `GET /api/v1/archive/:id/download` — Stream archive file securely with atomic download counter increment.
+- `PATCH /api/v1/archive/:id/moderate` — Faculty/Admin moderation action (`APPROVE`, `REJECT`, `ARCHIVE`) with review note and official certification toggle. Dispatches in-app and Telegram notifications to contributor.
+
+### Telegram Bot Archive Integration
+- `/archive <query>` — Search approved archive resources directly from Telegram.
+- `/past_exams <course>` — Quick search for past examination papers and solutions.
+- `🏛️ Archive & Past Exams` — Main menu interactive button displaying top downloaded resources and search shortcuts.
+
+
 
 
