@@ -49,9 +49,20 @@
         <button id="openSettingsModalBtn" class="btn btn-secondary btn-sm" title="Settings & Telegram Unification">
           ⚙️ Telegram & Settings
         </button>
+
+        <!-- Backend API Server Config Button -->
+        <button id="openBackendConfigBtn" class="btn btn-secondary btn-sm" title="Configure Backend API Server">
+          🌐 API Server
+        </button>
       </div>
     </div>
   </header>
+
+  <!-- Vercel Frontend Connection Banner -->
+  <div id="backendBanner" style="display: none; background: #fff3cd; color: #856404; padding: 0.6rem 1rem; border-bottom: 1px solid #ffeeba; text-align: center; font-size: 0.85rem;">
+    ⚠️ <strong>Vercel Frontend:</strong> Connect your portal to your Render backend to load courses and data. 
+    <button id="bannerConfigBtn" class="btn btn-primary btn-sm" style="margin-left: 0.5rem; padding: 0.2rem 0.6rem; font-size: 0.75rem;">Set Backend URL</button>
+  </div>
 
   <!-- Main Content -->
   <main>

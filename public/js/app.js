@@ -1,5 +1,89 @@
 // Campus Super App — Academic Portal Front-End Controller
 
+// ----------------------------------------------------
+// 0. API BACKEND RESOLVER (FOR VERCEL & DECOUPLED DEPLOYMENTS)
+// ----------------------------------------------------
+function getApiBase() {
+  const stored = localStorage.getItem("CAMPUS_API_BASE");
+  if (stored) return stored.trim().replace(/\/+$/, "");
+  if (window.CAMPUS_API_BASE) return window.CAMPUS_API_BASE.trim().replace(/\/+$/, "");
+  return "";
+}
+
+function promptBackendUrl() {
+  const current = getApiBase();
+  const input = prompt(
+    "Enter your live Backend API URL (e.g. https://your-backend.onrender.com):",
+    current || "https://"
+  );
+  if (input !== null) {
+    const cleaned = input.trim().replace(/\/+$/, "");
+    if (cleaned && cleaned !== "https://" && cleaned !== "http://") {
+      localStorage.setItem("CAMPUS_API_BASE", cleaned);
+    } else {
+      localStorage.removeItem("CAMPUS_API_BASE");
+    }
+    window.location.reload();
+  }
+}
+
+// Global fetch interceptor to redirect /api/v1 calls to the configured backend
+const _originalFetch = window.fetch;
+window.fetch = async function (resource, init) {
+  let url = resource;
+  if (typeof resource === "string" && resource.startsWith("/api/v1")) {
+    const base = getApiBase();
+    if (base) {
+      url = `${base}${resource}`;
+    }
+  }
+
+  const response = await _originalFetch.call(this, url, init);
+
+  // Wrap res.json() to gracefully handle HTML responses (e.g. Vercel 404 pages)
+  const _originalJson = response.json;
+  response.json = async function () {
+    const clone = response.clone();
+    try {
+      return await _originalJson.call(response);
+    } catch (err) {
+      const text = await clone.text();
+      if (text.includes("<!DOCTYPE") || text.includes("<html") || text.includes("The page could not be found")) {
+        console.warn(`[API Resolver] Endpoint "${url}" returned HTML instead of JSON. Ensure your Backend URL is set.`);
+        return { success: false, error: { message: "Backend API not reachable at current host" } };
+      }
+      throw err;
+    }
+  };
+
+  return response;
+};
+
+// Check if running on Vercel without configured backend and display banner
+document.addEventListener("DOMContentLoaded", () => {
+  const isVercel = window.location.hostname.includes("vercel.app");
+  const hasCustomBase = Boolean(getApiBase());
+  const banner = document.getElementById("backendBanner");
+  const bannerBtn = document.getElementById("bannerConfigBtn");
+  const headerBtn = document.getElementById("openBackendConfigBtn");
+
+  if (isVercel && !hasCustomBase && banner) {
+    banner.style.display = "block";
+  }
+
+  if (bannerBtn) {
+    bannerBtn.addEventListener("click", promptBackendUrl);
+  }
+
+  if (headerBtn) {
+    headerBtn.addEventListener("click", promptBackendUrl);
+    if (hasCustomBase) {
+      headerBtn.innerText = "🌐 Connected";
+      headerBtn.title = `Connected to: ${getApiBase()}`;
+    }
+  }
+});
+
 let activeAssignment = null;
 let selectedFile = null;
 let currentUser = null;
