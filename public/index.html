@@ -22,7 +22,14 @@
         <span class="brand-badge">Academic Ecosystem</span>
       </a>
 
-      <div class="header-actions">
+      <!-- Hamburger Navigation Toggle (< 1024px) -->
+      <button id="hamburgerBtn" class="hamburger-btn" aria-label="Toggle navigation menu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+
+      <div class="header-actions" id="headerActions">
         <!-- Live Auth Status -->
         <div id="authStatusContainer" style="display: flex; align-items: center; gap: 0.5rem;">
           <span id="userDisplayName" style="font-size: 0.85rem; font-weight: 600; color: var(--neutral-800);">Guest</span>
@@ -219,7 +226,7 @@
       </div>
 
       <!-- Resource Metrics -->
-      <div class="dashboard-metrics" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
+      <div class="dashboard-metrics">
         <div class="metric-card">
           <div class="metric-number" id="metricMaterialsTotal">0</div>
           <div class="metric-label">Approved Resources</div>
@@ -484,7 +491,7 @@
       </div>
 
       <!-- Container: Blog Posts Grid -->
-      <div id="blogPostsContainer" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem; margin-top: 1.5rem;">
+      <div id="blogPostsContainer" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); gap: 1.5rem; margin-top: 1.5rem;">
         <div style="text-align: center; padding: 2rem; color: var(--neutral-600); grid-column: 1 / -1;">Loading articles...</div>
       </div>
     </section>
@@ -503,7 +510,7 @@
       </div>
 
       <!-- Split Layout: Sidebar Threads + Main Chat Area -->
-      <div style="display: grid; grid-template-columns: 280px 1fr; gap: 1.5rem; min-height: 620px; background: #fff; border-radius: var(--radius); border: 1px solid var(--neutral-200); overflow: hidden;">
+      <div class="ai-chat-layout">
         <!-- Left: Conversations Sidebar -->
         <div style="background: #f8fafc; border-right: 1px solid var(--neutral-200); display: flex; flex-direction: column;">
           <div style="padding: 1rem; border-bottom: 1px solid var(--neutral-200);">
@@ -569,7 +576,7 @@
       </div>
 
       <!-- Institutional Metric Cards Grid -->
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+      <div class="stats-grid">
         <div class="card" style="padding: 1.25rem; border-left: 4px solid var(--primary);">
           <div style="font-size: 0.8rem; color: var(--neutral-500); text-transform: uppercase;">Students & Users</div>
           <div id="statTotalUsers" style="font-size: 1.8rem; font-weight: 700; color: var(--neutral-900); margin: 0.25rem 0;">0</div>
@@ -608,7 +615,7 @@
       </div>
 
       <!-- Two Columns: System Health & Moderation Queues -->
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+      <div class="grid-fluid-form">
         <!-- Left: Infrastructure Health -->
         <div class="card" style="padding: 1.25rem;">
           <h4 style="margin: 0 0 1rem 0; font-size: 1rem; color: var(--neutral-900);">🖥️ System Health & Infrastructure</h4>
@@ -677,7 +684,7 @@
 
   <!-- MODAL: LOGIN / AUTHENTICATION -->
   <div id="authModal" class="modal-overlay hidden">
-    <div class="modal-content" style="max-width: 480px;">
+    <div class="modal-content" style="max-width: min(480px, 90vw);">
       <div class="modal-header">
         <h3>User Authentication</h3>
         <button class="modal-close" onclick="closeModal('authModal')">&times;</button>
@@ -775,7 +782,7 @@
           <textarea id="newInstructions" rows="3" style="width: 100%;" placeholder="Step-by-step submission guidelines..."></textarea>
         </div>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+        <div class="grid-fluid-form">
           <div>
             <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Type</label>
             <select id="newType" style="width: 100%;">
@@ -789,7 +796,7 @@
           </div>
         </div>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+        <div class="grid-fluid-form">
           <div>
             <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Submission Due Date *</label>
             <input type="datetime-local" id="newDueDate" required style="width: 100%;" />
@@ -845,7 +852,7 @@
 
   <!-- MODAL: CREATE GROUP -->
   <div id="createGroupModal" class="modal-overlay hidden">
-    <div class="modal-content" style="max-width: 450px;">
+    <div class="modal-content" style="max-width: min(450px, 90vw);">
       <div class="modal-header">
         <h3>Create Assignment Group</h3>
         <button class="modal-close" onclick="closeModal('createGroupModal')">&times;</button>
@@ -883,7 +890,7 @@
           <textarea id="matDescription" rows="2" style="width: 100%;" placeholder="Brief summary of topics covered..."></textarea>
         </div>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+        <div class="grid-fluid-form">
           <div>
             <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Category *</label>
             <select id="matCategory" required style="width: 100%;">
@@ -926,7 +933,7 @@
 
   <!-- MODAL: MODERATE MATERIAL -->
   <div id="moderateMaterialModal" class="modal-overlay hidden">
-    <div class="modal-content" style="max-width: 500px;">
+    <div class="modal-content" style="max-width: min(500px, 90vw);">
       <div class="modal-header">
         <h3>Moderate Learning Resource</h3>
         <button class="modal-close" onclick="closeModal('moderateMaterialModal')">&times;</button>
@@ -960,7 +967,7 @@
 
   <!-- MODAL: UPLOAD ARCHIVE RESOURCE -->
   <div id="uploadArchiveModal" class="modal-overlay hidden">
-    <div class="modal-content" style="max-width: 580px;">
+    <div class="modal-content" style="max-width: min(580px, 90vw);">
       <div class="modal-header">
         <h3>Contribute to Academic Archive</h3>
         <button class="modal-close" onclick="closeModal('uploadArchiveModal')">&times;</button>
@@ -977,7 +984,7 @@
           <textarea id="arcDescription" rows="2" style="width: 100%;" placeholder="Brief outline, professor name, exam instructions, topics covered..."></textarea>
         </div>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+        <div class="grid-fluid-form">
           <div>
             <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Archive Category *</label>
             <select id="arcResourceTypeSelect" required style="width: 100%;">
@@ -1003,7 +1010,7 @@
           </div>
         </div>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+        <div class="grid-fluid-form">
           <div>
             <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Exam / Project Year</label>
             <input type="number" id="arcExamYear" min="2000" max="2035" style="width: 100%;" placeholder="e.g. 2024" />
@@ -1044,7 +1051,7 @@
 
   <!-- MODAL: MODERATE ARCHIVE RESOURCE -->
   <div id="moderateArchiveModal" class="modal-overlay hidden">
-    <div class="modal-content" style="max-width: 500px;">
+    <div class="modal-content" style="max-width: min(500px, 90vw);">
       <div class="modal-header">
         <h3>Moderate Archive Submission</h3>
         <button class="modal-close" onclick="closeModal('moderateArchiveModal')">&times;</button>
@@ -1086,7 +1093,7 @@
 
   <!-- MODAL: TAKE TIMED QUIZ -->
   <div id="takeQuizModal" class="modal-overlay hidden">
-    <div class="modal-content" style="max-width: 720px;">
+    <div class="modal-content" style="max-width: min(720px, 90vw);">
       <div class="modal-header" style="border-bottom: 2px solid var(--neutral-200); padding-bottom: 0.75rem;">
         <div>
           <h3 id="runnerQuizTitle" style="margin: 0;">Timed Quiz Attempt</h3>
@@ -1117,7 +1124,7 @@
 
   <!-- MODAL: QUIZ RESULT -->
   <div id="quizResultModal" class="modal-overlay hidden">
-    <div class="modal-content" style="max-width: 480px; text-align: center;">
+    <div class="modal-content" style="max-width: min(480px, 90vw); text-align: center;">
       <div style="font-size: 3rem; margin-bottom: 0.5rem;" id="quizResultIcon">🏆</div>
       <h3 id="quizResultTitle" style="margin-bottom: 0.5rem;">Quiz Evaluation Completed!</h3>
       <div id="quizResultBadgeContainer" style="margin-bottom: 1rem;"></div>
@@ -1136,7 +1143,7 @@
 
   <!-- MODAL: QUIZ REVIEW -->
   <div id="quizReviewModal" class="modal-overlay hidden">
-    <div class="modal-content" style="max-width: 760px; max-height: 85vh; display: flex; flex-direction: column;">
+    <div class="modal-content" style="max-width: min(760px, 90vw); max-height: 85vh; display: flex; flex-direction: column;">
       <div class="modal-header">
         <div>
           <h3 id="reviewQuizTitle">Quiz Attempt Review</h3>
@@ -1153,14 +1160,14 @@
 
   <!-- MODAL: CREATE QUESTION -->
   <div id="createQuestionModal" class="modal-overlay hidden">
-    <div class="modal-content" style="max-width: 600px;">
+    <div class="modal-content" style="max-width: min(600px, 90vw);">
       <div class="modal-header">
         <h3>➕ Add Question to Bank</h3>
         <button class="modal-close" onclick="closeModal('createQuestionModal')">&times;</button>
       </div>
 
       <form id="createQuestionForm">
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+        <div class="grid-fluid-form">
           <div>
             <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Course Offering *</label>
             <select id="qCourseOfferingSelect" required style="width: 100%;"></select>
@@ -1175,7 +1182,7 @@
           </div>
         </div>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+        <div class="grid-fluid-form">
           <div>
             <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Difficulty</label>
             <select id="qDifficultySelect" style="width: 100%;">
@@ -1224,14 +1231,14 @@
 
   <!-- MODAL: CREATE QUIZ -->
   <div id="createQuizModal" class="modal-overlay hidden">
-    <div class="modal-content" style="max-width: 650px;">
+    <div class="modal-content" style="max-width: min(650px, 90vw);">
       <div class="modal-header">
         <h3>➕ Create Timed Course Quiz</h3>
         <button class="modal-close" onclick="closeModal('createQuizModal')">&times;</button>
       </div>
 
       <form id="createQuizForm">
-        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+        <div class="grid-fluid-form">
           <div>
             <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Quiz Title *</label>
             <input type="text" id="quizTitleInput" required style="width: 100%;" placeholder="e.g. Midterm Readiness Assessment" />
@@ -1247,7 +1254,7 @@
           <textarea id="quizDescInput" rows="2" style="width: 100%;" placeholder="Instructions, allowed resources, honor code notice..."></textarea>
         </div>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+        <div class="grid-fluid-form">
           <div>
             <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Duration (Mins) *</label>
             <input type="number" id="quizDurationInput" required min="1" max="300" value="30" style="width: 100%;" />
@@ -1289,7 +1296,7 @@
 
   <!-- MODAL: QUIZ ANALYTICS -->
   <div id="quizAnalyticsModal" class="modal-overlay hidden">
-    <div class="modal-content" style="max-width: 720px;">
+    <div class="modal-content" style="max-width: min(720px, 90vw);">
       <div class="modal-header">
         <h3 id="analyticsQuizTitle">Cohort Quiz Performance Analytics</h3>
         <button class="modal-close" onclick="closeModal('quizAnalyticsModal')">&times;</button>
@@ -1302,7 +1309,7 @@
 
   <!-- MODAL: CREATE / WRITE BLOG POST -->
   <div id="createPostModal" class="modal-overlay hidden">
-    <div class="modal-content" style="max-width: 760px;">
+    <div class="modal-content" style="max-width: min(760px, 90vw);">
       <div class="modal-header">
         <h3>✍️ Publish Student Article / Idea</h3>
         <button class="modal-close" onclick="closeModal('createPostModal')">&times;</button>
@@ -1314,7 +1321,7 @@
           <input type="text" id="postTitleInput" required style="width: 100%; font-size: 1.05rem;" placeholder="e.g. Building a Distributed Cache from Scratch in TypeScript" />
         </div>
 
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+        <div class="grid-fluid-form">
           <div>
             <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Category *</label>
             <select id="postCategorySelect" required style="width: 100%;">
@@ -1360,7 +1367,7 @@
 
   <!-- MODAL: VIEW / READ ARTICLE -->
   <div id="viewPostModal" class="modal-overlay hidden">
-    <div class="modal-content" style="max-width: 820px; max-height: 90vh; overflow-y: auto;">
+    <div class="modal-content" style="max-width: min(820px, 90vw); max-height: 90vh; overflow-y: auto;">
       <div class="modal-header">
         <span id="articleCategoryBadge" class="badge" style="background: var(--primary); color: #fff;"></span>
         <button class="modal-close" onclick="closeModal('viewPostModal')">&times;</button>
@@ -1427,7 +1434,7 @@
 
   <!-- MODAL: AUTHOR PROFILE -->
   <div id="authorProfileModal" class="modal-overlay hidden">
-    <div class="modal-content" style="max-width: 650px;">
+    <div class="modal-content" style="max-width: min(650px, 90vw);">
       <div class="modal-header">
         <h3 id="authorProfileTitle">Student Author Profile</h3>
         <button class="modal-close" onclick="closeModal('authorProfileModal')">&times;</button>
@@ -1446,7 +1453,7 @@
 
   <!-- MODAL: REPORT CONTENT -->
   <div id="reportContentModal" class="modal-overlay hidden">
-    <div class="modal-content" style="max-width: 480px;">
+    <div class="modal-content" style="max-width: min(480px, 90vw);">
       <div class="modal-header">
         <h3>🚩 Report Inappropriate Content</h3>
         <button class="modal-close" onclick="closeModal('reportContentModal')">&times;</button>
@@ -1481,7 +1488,7 @@
 
   <!-- MODAL: BLOG CONTENT MODERATION (ADMIN) -->
   <div id="blogModerationModal" class="modal-overlay hidden">
-    <div class="modal-content" style="max-width: 800px;">
+    <div class="modal-content" style="max-width: min(800px, 90vw);">
       <div class="modal-header">
         <h3>🛡️ Content Moderation & Safety Center</h3>
         <button class="modal-close" onclick="closeModal('blogModerationModal')">&times;</button>
@@ -1504,7 +1511,7 @@
 
   <!-- MODAL: AI USAGE & ANALYTICS (ADMIN) -->
   <div id="aiAnalyticsModal" class="modal-overlay hidden">
-    <div class="modal-content" style="max-width: 800px;">
+    <div class="modal-content" style="max-width: min(800px, 90vw);">
       <div class="modal-header">
         <h3>📊 Institutional AI Usage & Model Analytics</h3>
         <button class="modal-close" onclick="closeModal('aiAnalyticsModal')">&times;</button>
@@ -1517,13 +1524,13 @@
 
   <!-- MODAL: SETTINGS & TELEGRAM UNIFICATION -->
   <div id="settingsModal" class="modal-overlay hidden">
-    <div class="modal-content" style="max-width: 750px;">
+    <div class="modal-content" style="max-width: min(750px, 90vw);">
       <div class="modal-header">
         <h3>⚙️ University Settings & Telegram Companion</h3>
         <button class="modal-close" onclick="closeModal('settingsModal')">&times;</button>
       </div>
 
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 1rem;">
+      <div class="grid-fluid-form" style="margin-top: 1rem;">
         <!-- Left: Telegram Integration -->
         <div style="background: var(--neutral-50, #f8fafc); padding: 1.25rem; border-radius: var(--radius-md, 8px); border: 1px solid var(--neutral-200, #e2e8f0);">
           <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">

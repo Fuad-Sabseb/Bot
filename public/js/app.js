@@ -152,6 +152,34 @@ async function initTelegramMiniApp() {
 document.addEventListener("DOMContentLoaded", () => {
   initTelegramMiniApp();
 
+  // Responsive Hamburger Navigation (< 1024px)
+  const hamburgerBtn = document.getElementById("hamburgerBtn");
+  const headerActions = document.getElementById("headerActions");
+  if (hamburgerBtn && headerActions) {
+    hamburgerBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      hamburgerBtn.classList.toggle("active");
+      headerActions.classList.toggle("open");
+    });
+
+    document.addEventListener("click", (e) => {
+      if (!headerActions.contains(e.target) && !hamburgerBtn.contains(e.target)) {
+        hamburgerBtn.classList.remove("active");
+        headerActions.classList.remove("open");
+      }
+    });
+
+    // Close menu when tapping an action button inside drawer
+    headerActions.querySelectorAll("button").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        if (window.innerWidth < 1024 && btn.id !== "notifBellBtn") {
+          hamburgerBtn.classList.remove("active");
+          headerActions.classList.remove("open");
+        }
+      });
+    });
+  }
+
   const headerBtn = document.getElementById("openBackendConfigBtn");
   if (headerBtn) {
     headerBtn.addEventListener("click", promptBackendUrl);
