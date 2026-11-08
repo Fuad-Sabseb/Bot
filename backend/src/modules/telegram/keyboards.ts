@@ -1,11 +1,31 @@
 import TelegramBot from "node-telegram-bot-api";
 
+export const WEB_APP_URL = process.env.WEB_APP_URL || "https://bot-public-her5hddyh-fuad-b8a8.vercel.app";
+
 export const backButton: TelegramBot.InlineKeyboardMarkup = {
   inline_keyboard: [[{ text: "⬅️ Back to Menu", callback_data: "back_menu" }]],
 };
 
+export const miniAppReplyKeyboard: TelegramBot.ReplyKeyboardMarkup = {
+  keyboard: [
+    [
+      {
+        text: "🚀 Open Campus Portal (Mini App)",
+        web_app: { url: WEB_APP_URL },
+      },
+    ],
+  ],
+  resize_keyboard: true,
+};
+
 export const mainMenuKeyboard: TelegramBot.InlineKeyboardMarkup = {
   inline_keyboard: [
+    [
+      {
+        text: "🚀 Open Campus Web Portal (Mini App)",
+        web_app: { url: WEB_APP_URL },
+      },
+    ],
     [
       { text: "🎓 Join Group", callback_data: "join_group" },
       { text: "📚 My Courses", callback_data: "my_courses" },

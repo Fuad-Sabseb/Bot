@@ -13,6 +13,7 @@ const authLimiter = createRateLimiter({
 
 router.post("/register", authLimiter, AuthController.register);
 router.post("/login", authLimiter, AuthController.login);
+router.post("/telegram-miniapp", AuthController.loginTelegramMiniApp);
 router.post("/refresh", AuthController.refresh);
 router.post("/logout", authenticate, AuthController.logout);
 router.get("/sessions", authenticate, AuthController.getSessions);

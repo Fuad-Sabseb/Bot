@@ -235,6 +235,89 @@ export class AuthService {
   }
 
   /**
+   * Seamless Authentication for Telegram Mini App users.
+   * Auto-links or creates user by verified Telegram Chat ID and issues session.
+   */
+  static async loginWithTelegramMiniApp(telegramUser: {
+    id: number | string;
+    first_name?: string;
+    last_name?: string;
+    username?: string;
+  }): Promise<{ user: any; tokens: AuthTokens }> {
+    const bigIntChatId = BigInt(telegramUser.id);
+
+    let user = await prisma.user.findUnique({
+      where: { telegramChatId: bigIntChatId },
+      include: {
+        globalRoles: true,
+      },
+    });
+
+    if (!user) {
+      const fullName =
+        [telegramUser.first_name, telegramUser.last_name].filter(Boolean).join(" ") ||
+        `Student_${telegramUser.id}`;
+      user = await prisma.user.create({
+        data: {
+          telegramChatId: bigIntChatId,
+          telegramUsername: telegramUser.username || null,
+          fullName,
+          isActive: true,
+          isVerified: true,
+          globalRoles: {
+            create: { role: "USER" },
+          },
+        },
+        include: {
+          globalRoles: true,
+        },
+      });
+    }
+
+    const session = await prisma.session.create({
+      data: {
+        userId: user.id,
+        userAgent: "Telegram MiniApp",
+      },
+    });
+
+    const familyId = crypto.randomUUID();
+    const rawRefreshToken = generateRandomToken(48);
+    const tokenHash = hashToken(rawRefreshToken);
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+    await prisma.refreshToken.create({
+      data: {
+        sessionId: session.id,
+        tokenHash,
+        familyId,
+        expiresAt,
+      },
+    });
+
+    const accessToken = generateAccessToken({
+      userId: user.id,
+      campusId: user.campusId,
+      sessionId: session.id,
+    });
+
+    return {
+      user: {
+        id: user.id,
+        campusId: user.campusId,
+        fullName: user.fullName,
+        email: user.email,
+        roles: user.globalRoles.map((r) => r.role),
+      },
+      tokens: {
+        accessToken,
+        refreshToken: rawRefreshToken,
+        expiresIn: "15m",
+      },
+    };
+  }
+
+  /**
    * Atomic Refresh Token Rotation with 10-Second Concurrency Grace Window.
    */
   static async refreshTokens(rawRefreshToken: string): Promise<AuthTokens> {

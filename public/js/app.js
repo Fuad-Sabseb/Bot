@@ -62,8 +62,52 @@ window.fetch = async function (resource, init) {
   return response;
 };
 
+// ----------------------------------------------------
+// TELEGRAM MINI APP INTEGRATION & AUTO-AUTHENTICATION
+// ----------------------------------------------------
+async function initTelegramMiniApp() {
+  const tg = window.Telegram?.WebApp;
+  if (!tg) return;
+
+  try {
+    tg.ready();
+    tg.expand();
+    if (tg.enableClosingConfirmation) {
+      tg.enableClosingConfirmation();
+    }
+  } catch (e) {
+    console.warn("Telegram WebApp initialization notice:", e);
+  }
+
+  // Automatic authentication using Telegram user context
+  const tgUser = tg.initDataUnsafe?.user;
+  if (tgUser && tgUser.id) {
+    console.log("Telegram Mini App user detected:", tgUser.first_name, tgUser.id);
+    const existingToken = localStorage.getItem("campus_access_token");
+    if (!existingToken) {
+      try {
+        const res = await fetch("/api/v1/auth/telegram-miniapp", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ telegramUser: tgUser, initData: tg.initData }),
+        });
+        const result = await res.json();
+        if (result.success && result.data?.tokens?.accessToken) {
+          localStorage.setItem("campus_access_token", result.data.tokens.accessToken);
+          console.log("✅ Authenticated seamlessly via Telegram Mini App!");
+          await checkAuthSession();
+        }
+      } catch (err) {
+        console.warn("Telegram Mini App auto-auth notice:", err);
+      }
+    }
+  }
+}
+
 // Check if running on Vercel and display connection state
 document.addEventListener("DOMContentLoaded", () => {
+  initTelegramMiniApp();
+
   const headerBtn = document.getElementById("openBackendConfigBtn");
   if (headerBtn) {
     headerBtn.addEventListener("click", promptBackendUrl);

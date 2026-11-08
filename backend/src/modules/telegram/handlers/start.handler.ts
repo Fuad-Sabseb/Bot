@@ -1,6 +1,6 @@
 import TelegramBot from "node-telegram-bot-api";
 import { prisma } from "../../../database/prisma";
-import { mainMenuKeyboard } from "../keyboards";
+import { mainMenuKeyboard, miniAppReplyKeyboard } from "../keyboards";
 import { telegramState } from "../state";
 
 export async function sendMainMenu(
@@ -56,6 +56,20 @@ export async function sendMainMenu(
     } catch {
       // If edit fails (e.g. content identical), send fresh message
     }
+  }
+
+  // Send Mini App persistent drawer button to override any legacy reply keyboards
+  try {
+    await bot.sendMessage(
+      numericChatId,
+      "⚡ *Campus Super App*: Tap below to launch full Web Mini App or choose from the bot menu.",
+      {
+        parse_mode: "Markdown",
+        reply_markup: miniAppReplyKeyboard,
+      }
+    );
+  } catch (err: any) {
+    console.warn("Notice sending miniAppReplyKeyboard:", err.message);
   }
 
   await bot.sendMessage(numericChatId, text, options);

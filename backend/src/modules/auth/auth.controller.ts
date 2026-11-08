@@ -88,6 +88,27 @@ export class AuthController {
     }
   }
 
+  static async loginTelegramMiniApp(req: Request, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const { telegramUser } = req.body;
+      if (!telegramUser || !telegramUser.id) {
+        res.status(400).json({
+          success: false,
+          error: { code: "VALIDATION_ERROR", message: "telegramUser with id is required" },
+        });
+        return;
+      }
+
+      const result = await AuthService.loginWithTelegramMiniApp(telegramUser);
+      res.json({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async refresh(req: Request, res: Response, next: NextFunction): Promise<void> {
     try {
       // Refresh token can arrive via HttpOnly Cookie OR JSON body

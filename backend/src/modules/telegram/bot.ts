@@ -1,7 +1,7 @@
 import TelegramBot from "node-telegram-bot-api";
 import { env } from "../../config/env";
 import { telegramState } from "./state";
-import { backButton, assignmentMenuKeyboard, adminPanelKeyboard } from "./keyboards";
+import { backButton, assignmentMenuKeyboard, adminPanelKeyboard, WEB_APP_URL } from "./keyboards";
 import { sendMainMenu } from "./handlers/start.handler";
 import { handleJoinIdSubmission } from "./handlers/join.handler";
 import {
@@ -67,9 +67,45 @@ export function initTelegramBot(): TelegramBot | null {
   const bot = new TelegramBot(token, { polling: true });
   activeBotInstance = bot;
 
+  // Configure persistent Chat Menu Button to open Web App full-screen
+  try {
+    (bot as any).setChatMenuButton({
+      menu_button: {
+        type: "web_app",
+        text: "Campus App",
+        web_app: { url: WEB_APP_URL },
+      },
+    }).catch((err: any) => {
+      console.warn("Notice: setChatMenuButton:", err.message);
+    });
+  } catch (err: any) {
+    console.warn("Could not set chat menu button:", err.message);
+  }
+
   // Error logging
   bot.on("polling_error", (err) => {
     console.error("Telegram Polling Error:", err.message);
+  });
+
+  // /miniapp or /webapp command to explicitly get the WebApp launch button
+  bot.onText(/\/(?:webapp|miniapp|portal|app)/, async (msg) => {
+    await bot.sendMessage(
+      msg.chat.id,
+      "🚀 *Campus Super App Portal*\nTap the button below to launch the Mini App inside Telegram:",
+      {
+        parse_mode: "Markdown",
+        reply_markup: {
+          inline_keyboard: [
+            [
+              {
+                text: "🚀 Launch Campus Portal",
+                web_app: { url: WEB_APP_URL },
+              },
+            ],
+          ],
+        },
+      }
+    );
   });
 
   // /start command (supports deep-linking: /start link_123456)
