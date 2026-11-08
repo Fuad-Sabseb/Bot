@@ -3,6 +3,9 @@ import fs from "fs";
 import path from "path";
 import os from "os";
 import { getTelegramBot } from "../telegram/bot";
+import { StorageService } from "../../services/storage.service";
+import { getAIProvider } from "../ai/ai.provider";
+import { RealtimeService } from "../realtime/realtime.service";
 
 export class AdminService {
   /**
@@ -218,13 +221,37 @@ export class AdminService {
     const telegramStatus = botInstance ? "connected" : "disabled_or_not_configured";
 
     const memory = process.memoryUsage();
+    const aiProvider = getAIProvider();
 
     return {
       status: dbStatus === "healthy" ? "healthy" : "degraded",
       database: {
         status: dbStatus,
         latencyMs: dbLatencyMs,
-        provider: "PostgreSQL with pgvector",
+        provider: "Neon Serverless Postgres with pgvector",
+      },
+      neon: {
+        branch: process.env.NEON_BRANCH || "production",
+        branchId: process.env.NEON_BRANCH_ID,
+        postgres: {
+          status: dbStatus,
+          latencyMs: dbLatencyMs,
+          pooled: Boolean(process.env.DATABASE_URL?.includes("-pooler")),
+        },
+        objectStorage: {
+          configured: StorageService.isS3Configured(),
+          bucket: process.env.AWS_BUCKET || "assets",
+          endpoint: process.env.AWS_ENDPOINT_URL_S3 ? "configured" : "missing",
+        },
+        aiGateway: {
+          configured: Boolean(process.env.NEON_AI_GATEWAY_BASE_URL && process.env.NEON_AI_GATEWAY_TOKEN),
+          provider: aiProvider.name,
+          endpoint: process.env.NEON_AI_GATEWAY_BASE_URL ? "configured" : "missing",
+        },
+        realtime: {
+          configured: RealtimeService.isConfigured(),
+          endpoint: process.env.NEON_REALTIME_URL ? "configured" : "missing",
+        },
       },
       telegramBot: {
         status: telegramStatus,

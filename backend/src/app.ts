@@ -16,6 +16,7 @@ import quizzesRoutes from "./modules/quizzes/quizzes.routes";
 import blogRoutes from "./modules/blog/blog.routes";
 import aiRoutes from "./modules/ai/ai.routes";
 import adminRoutes from "./modules/admin/admin.routes";
+import realtimeRoutes from "./modules/realtime/realtime.routes";
 import { errorHandler } from "./middleware/error.middleware";
 import { csrfProtection } from "./middleware/csrf.middleware";
 import { authRateLimiter, apiRateLimiter } from "./middleware/rate-limit.middleware";
@@ -82,6 +83,7 @@ export function createApp(): Application {
   v1Router.use("/blog", blogRoutes);
   v1Router.use("/ai", aiRoutes);
   v1Router.use("/admin", adminRoutes);
+  v1Router.use("/realtime", realtimeRoutes);
 
   // Protected Profile Route (Test & Verification)
   v1Router.get("/auth/me", authenticate, (req: Request, res: Response) => {

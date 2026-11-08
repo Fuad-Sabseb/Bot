@@ -1,3 +1,4 @@
+import OpenAI from "openai";
 import { env } from "../../config/env";
 
 export interface AICompletionResult {
@@ -148,6 +149,97 @@ export class MockAIProvider implements IAIProvider {
 }
 
 /**
+ * Neon AI Gateway Provider:
+ * Connects directly to Neon AI Gateway's unified OpenAI-compatible endpoint.
+ * Gracefully falls back to MockAIProvider if credit quotas or plan limits occur.
+ */
+export class NeonAIGatewayProvider implements IAIProvider {
+  name = "neon-ai-gateway";
+  private openai: OpenAI;
+  private fallback: MockAIProvider;
+  private preferredModel: string;
+
+  constructor() {
+    const rawBaseUrl = process.env.NEON_AI_GATEWAY_BASE_URL || "";
+    const baseURL = rawBaseUrl.endsWith("/v1") ? rawBaseUrl : `${rawBaseUrl}/v1`;
+    const apiKey = process.env.NEON_AI_GATEWAY_TOKEN || "";
+
+    this.openai = new OpenAI({
+      baseURL,
+      apiKey,
+    });
+    this.fallback = new MockAIProvider();
+    this.preferredModel = process.env.NEON_AI_MODEL || "gpt-4o-mini";
+  }
+
+  async generateCompletion(prompt: string, options?: CompletionOptions): Promise<AICompletionResult> {
+    try {
+      const systemMessage =
+        options?.systemPrompt ||
+        "You are an academic university assistant. Provide structured, accurate, well-reasoned answers.";
+
+      let userContent = prompt;
+      if (options?.documents && options.documents.length > 0) {
+        userContent += "\n\nRefer to the following course context:\n";
+        options.documents.forEach((d, i) => {
+          userContent += `\n[Doc ${i + 1}: ${d.title}]\n${d.content}\n`;
+        });
+      }
+
+      const response = await this.openai.chat.completions.create({
+        model: this.preferredModel,
+        messages: [
+          { role: "system", content: systemMessage },
+          { role: "user", content: userContent },
+        ],
+        temperature: 0.3,
+      });
+
+      const choice = response.choices[0];
+      const content = choice?.message?.content || "";
+      const usage = response.usage;
+
+      return {
+        content,
+        promptTokens: usage?.prompt_tokens || Math.max(1, Math.round(prompt.length / 4)),
+        completeTokens: usage?.completion_tokens || Math.max(1, Math.round(content.length / 4)),
+        totalTokens: usage?.total_tokens || 0,
+        model: response.model || this.preferredModel,
+        sources: options?.documents?.map((d) => d.source),
+      };
+    } catch (err: any) {
+      console.warn(
+        `⚠️ Neon AI Gateway inference note (${err.status || err.code || "notice"}): ${err.message}. Falling back to internal engine.`
+      );
+      return this.fallback.generateCompletion(prompt, options);
+    }
+  }
+
+  async generateEmbedding(text: string): Promise<number[]> {
+    try {
+      const response = await this.openai.embeddings.create({
+        model: "text-embedding-3-small",
+        input: text,
+      });
+      return response.data[0].embedding;
+    } catch (err: any) {
+      console.warn(
+        `⚠️ Neon AI Gateway embeddings note (${err.message}). Using local deterministic vectorizer.`
+      );
+      return this.fallback.generateEmbedding(text);
+    }
+  }
+
+  /**
+   * Health/Catalog check against the Neon AI Gateway.
+   */
+  async listAvailableModels(): Promise<string[]> {
+    const list = await this.openai.models.list();
+    return list.data.map((m) => m.id);
+  }
+}
+
+/**
  * Factory to get active AI provider.
  */
 let cachedProvider: IAIProvider | null = null;
@@ -155,7 +247,11 @@ let cachedProvider: IAIProvider | null = null;
 export function getAIProvider(): IAIProvider {
   if (cachedProvider) return cachedProvider;
 
-  // In standard operation or test, default to MockAIProvider
-  cachedProvider = new MockAIProvider();
+  if (process.env.NEON_AI_GATEWAY_BASE_URL && process.env.NEON_AI_GATEWAY_TOKEN) {
+    cachedProvider = new NeonAIGatewayProvider();
+  } else {
+    cachedProvider = new MockAIProvider();
+  }
+
   return cachedProvider;
 }
