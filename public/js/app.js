@@ -1,20 +1,23 @@
 // Campus Super App — Academic Portal Front-End Controller
 
 // ----------------------------------------------------
-// 0. API BACKEND RESOLVER (FOR VERCEL & DECOUPLED DEPLOYMENTS)
+// 0. API BACKEND RESOLVER (RENDER BACKEND)
 // ----------------------------------------------------
+const RENDER_BACKEND_URL = "https://campus-super-app-backend.onrender.com";
+
 function getApiBase() {
   const stored = localStorage.getItem("CAMPUS_API_BASE");
   if (stored) return stored.trim().replace(/\/+$/, "");
   if (window.CAMPUS_API_BASE) return window.CAMPUS_API_BASE.trim().replace(/\/+$/, "");
-  return "";
+  // Default to our production Render backend
+  return RENDER_BACKEND_URL;
 }
 
 function promptBackendUrl() {
   const current = getApiBase();
   const input = prompt(
-    "Enter your live Backend API URL (e.g. https://your-backend.onrender.com):",
-    current || "https://"
+    "Enter your live Backend API URL (e.g. https://campus-super-app-backend.onrender.com):",
+    current || RENDER_BACKEND_URL
   );
   if (input !== null) {
     const cleaned = input.trim().replace(/\/+$/, "");
@@ -27,7 +30,7 @@ function promptBackendUrl() {
   }
 }
 
-// Global fetch interceptor to redirect /api/v1 calls to the configured backend
+// Global fetch interceptor to redirect all /api/v1 calls directly to Render backend
 const _originalFetch = window.fetch;
 window.fetch = async function (resource, init) {
   let url = resource;
@@ -49,7 +52,7 @@ window.fetch = async function (resource, init) {
     } catch (err) {
       const text = await clone.text();
       if (text.includes("<!DOCTYPE") || text.includes("<html") || text.includes("The page could not be found")) {
-        console.warn(`[API Resolver] Endpoint "${url}" returned HTML instead of JSON. Ensure your Backend URL is set.`);
+        console.warn(`[API Resolver] Endpoint "${url}" returned HTML instead of JSON. Verify backend connectivity.`);
         return { success: false, error: { message: "Backend API not reachable at current host" } };
       }
       throw err;
@@ -59,28 +62,13 @@ window.fetch = async function (resource, init) {
   return response;
 };
 
-// Check if running on Vercel without configured backend and display banner
+// Check if running on Vercel and display connection state
 document.addEventListener("DOMContentLoaded", () => {
-  const isVercel = window.location.hostname.includes("vercel.app");
-  const hasCustomBase = Boolean(getApiBase());
-  const banner = document.getElementById("backendBanner");
-  const bannerBtn = document.getElementById("bannerConfigBtn");
   const headerBtn = document.getElementById("openBackendConfigBtn");
-
-  if (isVercel && !hasCustomBase && banner) {
-    banner.style.display = "block";
-  }
-
-  if (bannerBtn) {
-    bannerBtn.addEventListener("click", promptBackendUrl);
-  }
-
   if (headerBtn) {
     headerBtn.addEventListener("click", promptBackendUrl);
-    if (hasCustomBase) {
-      headerBtn.innerText = "🌐 Connected";
-      headerBtn.title = `Connected to: ${getApiBase()}`;
-    }
+    headerBtn.innerText = "🌐 Connected";
+    headerBtn.title = `Connected to: ${getApiBase()}`;
   }
 });
 
@@ -88,8 +76,12 @@ let activeAssignment = null;
 let selectedFile = null;
 let currentUser = null;
 
+function getAuthToken() {
+  return localStorage.getItem("campus_access_token") || "";
+}
+
 function getAuthHeader() {
-  const token = localStorage.getItem("campus_access_token");
+  const token = getAuthToken();
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
