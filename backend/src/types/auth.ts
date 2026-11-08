@@ -11,6 +11,8 @@ export interface UserRoleContext {
   courseRoles: { courseOfferingId: string; role: CourseRole }[];
 }
 
+export type AuthenticatedRequest = import("express").Request;
+
 declare global {
   namespace Express {
     interface Request {

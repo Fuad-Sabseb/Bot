@@ -31,6 +31,11 @@ const envSchema = z.object({
   // Storage
   STORAGE_PROVIDER: z.enum(["local", "s3", "r2"]).default("local"),
   STORAGE_LOCAL_PATH: z.string().default("./storage"),
+
+  // AI & RAG
+  AI_PROVIDER: z.enum(["mock", "gemini", "openai"]).default("mock"),
+  AI_API_KEY: z.string().optional(),
+  AI_MODEL: z.string().default("gemini-1.5-pro"),
 });
 
 export type Env = z.infer<typeof envSchema>;
