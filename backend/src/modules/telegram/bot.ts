@@ -67,14 +67,14 @@ export function initTelegramBot(): TelegramBot | null {
   const bot = new TelegramBot(token, { polling: true });
   activeBotInstance = bot;
 
-  // Configure persistent Chat Menu Button to open Web App full-screen
+  // Configure persistent Chat Menu Button to open Web App full-screen (like in Telegram menu bar)
   try {
     (bot as any).setChatMenuButton({
-      menu_button: {
+      menu_button: JSON.stringify({
         type: "web_app",
-        text: "Campus App",
+        text: "Open Campus SuperApp",
         web_app: { url: WEB_APP_URL },
-      },
+      }),
     }).catch((err: any) => {
       console.warn("Notice: setChatMenuButton:", err.message);
     });

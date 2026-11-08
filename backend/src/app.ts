@@ -29,8 +29,9 @@ export function createApp(): Application {
   // 1. Security Headers
   app.use(
     helmet({
-      contentSecurityPolicy: process.env.NODE_ENV === "production" ? undefined : false,
+      contentSecurityPolicy: false,
       crossOriginEmbedderPolicy: false,
+      frameguard: false, // Crucial: Allow Telegram Mini App webview and web.telegram.org embedding
     })
   );
 
