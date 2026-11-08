@@ -88,9 +88,20 @@ main {
   gap: 0.5rem;
   border-bottom: 2px solid var(--neutral-200);
   margin-bottom: 1.5rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.tabs-nav::-webkit-scrollbar {
+  display: none;
 }
 
 .tab-btn {
+  flex-shrink: 0;
+  white-space: nowrap;
   background: none;
   border: none;
   padding: 0.75rem 1.25rem;
@@ -427,4 +438,170 @@ th {
 
 .hidden {
   display: none !important;
+}
+
+/* ====================================================
+   MOBILE & TELEGRAM MINI APP RESPONSIVENESS (< 768px)
+   ==================================================== */
+@media (max-width: 768px) {
+  .nav-container {
+    padding: 0.5rem 0.75rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .brand {
+    font-size: 1.05rem;
+    gap: 0.4rem;
+  }
+
+  .brand svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .brand-badge {
+    display: none; /* Hide subtitle badge on mobile to prevent header squish */
+  }
+
+  .header-actions {
+    gap: 0.35rem;
+    flex-wrap: wrap;
+  }
+
+  .header-actions .btn {
+    padding: 0.3rem 0.55rem;
+    font-size: 0.75rem;
+  }
+
+  #userDisplayName {
+    font-size: 0.75rem !important;
+    max-width: 120px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: inline-block;
+  }
+
+  main {
+    margin: 1rem auto;
+    padding: 0 0.75rem;
+  }
+
+  .tabs-nav {
+    margin-bottom: 1rem;
+    gap: 0.35rem;
+  }
+
+  .tab-btn {
+    padding: 0.5rem 0.85rem;
+    font-size: 0.82rem;
+    gap: 0.35rem;
+  }
+
+  /* Cards & Grid Metrics */
+  .dashboard-metrics {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.65rem;
+    margin-bottom: 1.25rem;
+  }
+
+  .metric-card {
+    padding: 0.85rem 0.5rem;
+  }
+
+  .metric-number {
+    font-size: 1.5rem;
+  }
+
+  .metric-label {
+    font-size: 0.7rem;
+  }
+
+  .filter-bar {
+    padding: 0.75rem;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+  }
+
+  .filter-group {
+    flex-direction: column;
+    align-items: stretch;
+    width: 100%;
+    gap: 0.5rem;
+  }
+
+  .filter-group select,
+  .filter-group input {
+    width: 100%;
+  }
+
+  .assignment-card {
+    padding: 1rem;
+  }
+
+  .card-header {
+    flex-direction: column;
+    gap: 0.4rem;
+    align-items: flex-start;
+  }
+
+  .card-title {
+    font-size: 1.05rem;
+  }
+
+  .card-footer {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.6rem;
+  }
+
+  .card-footer .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Modals on Mobile */
+  .modal-overlay {
+    padding: 0.5rem;
+  }
+
+  .modal-content {
+    padding: 1.25rem 1rem;
+    max-height: 94vh;
+    border-radius: 8px;
+  }
+
+  /* Tables scroll horizontally */
+  table {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Notification dropdown centered on mobile */
+  .notifications-dropdown {
+    width: calc(100vw - 1.5rem);
+    right: 0.75rem;
+    left: 0.75rem;
+    top: 55px;
+  }
+}
+
+/* Extra small mobile screens (<= 380px like Samsung Galaxy 360px viewport) */
+@media (max-width: 380px) {
+  .dashboard-metrics {
+    grid-template-columns: 1fr;
+  }
+
+  .header-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  #userDisplayName {
+    max-width: 90px;
+  }
 }

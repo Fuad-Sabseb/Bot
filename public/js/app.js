@@ -1,14 +1,32 @@
 // Campus Super App — Academic Portal Front-End Controller
 
 // ----------------------------------------------------
-// 0. API BACKEND RESOLVER (RENDER BACKEND)
+// 0. AUTH TOKEN HOISTING (GLOBAL)
+// ----------------------------------------------------
+function getAuthToken() {
+  return localStorage.getItem("campus_access_token") || "";
+}
+window.getAuthToken = getAuthToken;
+
+function getAuthHeader() {
+  const token = getAuthToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
+}
+window.getAuthHeader = getAuthHeader;
+
+// ----------------------------------------------------
+// 1. API BACKEND RESOLVER (RENDER BACKEND)
 // ----------------------------------------------------
 const RENDER_BACKEND_URL = "https://campus-super-app-backend.onrender.com";
 
 function getApiBase() {
   const stored = localStorage.getItem("CAMPUS_API_BASE");
-  if (stored) return stored.trim().replace(/\/+$/, "");
-  if (window.CAMPUS_API_BASE) return window.CAMPUS_API_BASE.trim().replace(/\/+$/, "");
+  if (stored && stored.trim() && stored !== "null" && stored !== "undefined") {
+    return stored.trim().replace(/\/+$/, "");
+  }
+  if (window.CAMPUS_API_BASE && window.CAMPUS_API_BASE.trim()) {
+    return window.CAMPUS_API_BASE.trim().replace(/\/+$/, "");
+  }
   // Default to our production Render backend
   return RENDER_BACKEND_URL;
 }
@@ -41,25 +59,51 @@ window.fetch = async function (resource, init) {
     }
   }
 
-  const response = await _originalFetch.call(this, url, init);
+  try {
+    const response = await _originalFetch.call(this, url, init);
 
-  // Wrap res.json() to gracefully handle HTML responses (e.g. Vercel 404 pages)
-  const _originalJson = response.json;
-  response.json = async function () {
-    const clone = response.clone();
-    try {
-      return await _originalJson.call(response);
-    } catch (err) {
-      const text = await clone.text();
-      if (text.includes("<!DOCTYPE") || text.includes("<html") || text.includes("The page could not be found")) {
-        console.warn(`[API Resolver] Endpoint "${url}" returned HTML instead of JSON. Verify backend connectivity.`);
-        return { success: false, error: { message: "Backend API not reachable at current host" } };
+    // Wrap res.json() to gracefully handle HTML responses (e.g. Vercel 404 pages)
+    const _originalJson = response.json;
+    response.json = async function () {
+      try {
+        const data = await _originalJson.call(response);
+        return data;
+      } catch (err) {
+        console.warn(`[Safe API] Endpoint "${url}" returned non-JSON body (${response.status} ${response.statusText}).`);
+        return {
+          success: false,
+          error: { message: `Endpoint returned HTTP ${response.status}` },
+          data: {
+            notifications: [],
+            unreadCount: 0,
+            enrolledOfferings: [],
+            instructedOfferings: [],
+            totalResources: 0,
+            totalDownloads: 0,
+          },
+        };
       }
-      throw err;
-    }
-  };
+    };
 
-  return response;
+    return response;
+  } catch (netErr) {
+    console.error(`[Safe API] Network connection failed for "${url}":`, netErr);
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: { message: "Cannot connect to server" },
+        data: {
+          notifications: [],
+          unreadCount: 0,
+          enrolledOfferings: [],
+          instructedOfferings: [],
+          totalResources: 0,
+          totalDownloads: 0,
+        },
+      }),
+      { status: 503, headers: { "Content-Type": "application/json" } }
+    );
+  }
 };
 
 // ----------------------------------------------------
@@ -119,15 +163,6 @@ document.addEventListener("DOMContentLoaded", () => {
 let activeAssignment = null;
 let selectedFile = null;
 let currentUser = null;
-
-function getAuthToken() {
-  return localStorage.getItem("campus_access_token") || "";
-}
-
-function getAuthHeader() {
-  const token = getAuthToken();
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
 
 // ----------------------------------------------------
 // AUTHENTICATION & SESSION MANAGEMENT
