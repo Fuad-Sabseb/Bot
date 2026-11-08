@@ -3164,6 +3164,163 @@ document.getElementById("openAiAnalyticsBtn")?.addEventListener("click", async (
   }
 });
 
+// ==========================================
+// PHASE 9: SETTINGS & TELEGRAM UNIFICATION
+// ==========================================
+
+const openSettingsModalBtn = document.getElementById("openSettingsModalBtn");
+const settingsModal = document.getElementById("settingsModal");
+const generateTgOtpBtn = document.getElementById("generateTgOtpBtn");
+const settingsPrefForm = document.getElementById("settingsPrefForm");
+
+openSettingsModalBtn?.addEventListener("click", () => {
+  openSettingsModal();
+});
+
+async function openSettingsModal() {
+  openModal("settingsModal");
+  await loadUserSettingsAndTelegram();
+}
+
+async function loadUserSettingsAndTelegram() {
+  const token = getAuthToken();
+  if (!token) {
+    const badge = document.getElementById("settingsTgBadge");
+    if (badge) {
+      badge.textContent = "Not Logged In";
+      badge.style.background = "var(--neutral-400)";
+    }
+    return;
+  }
+
+  try {
+    // 1. Fetch user profile for Telegram link state
+    const profileRes = await fetch("/api/v1/users/me", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const profileResult = await profileRes.json();
+    if (profileResult.success) {
+      const u = profileResult.data;
+      const isLinked = !!u.telegramChatId;
+      const badge = document.getElementById("settingsTgBadge");
+      const linkedInfo = document.getElementById("settingsTgLinkedInfo");
+      const unlinkedBox = document.getElementById("settingsTgUnlinkedBox");
+
+      if (badge) {
+        if (isLinked) {
+          badge.textContent = "Linked & Synced";
+          badge.style.background = "var(--success)";
+          linkedInfo?.classList.remove("hidden");
+          const unEl = document.getElementById("settingsTgUsername");
+          if (unEl) unEl.textContent = u.telegramUsername ? `@${u.telegramUsername}` : "(No username)";
+          const idEl = document.getElementById("settingsTgChatId");
+          if (idEl) idEl.textContent = u.telegramChatId;
+          unlinkedBox?.classList.add("hidden");
+        } else {
+          badge.textContent = "Unlinked";
+          badge.style.background = "var(--warning)";
+          linkedInfo?.classList.add("hidden");
+          unlinkedBox?.classList.remove("hidden");
+        }
+      }
+    }
+
+    // 2. Fetch notification preferences
+    const prefRes = await fetch("/api/v1/notifications/preferences", {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const prefResult = await prefRes.json();
+    if (prefResult.success) {
+      const p = prefResult.data;
+      const r3 = document.getElementById("prefRemind3Days");
+      if (r3) r3.checked = p.remind3Days;
+      const r1 = document.getElementById("prefRemind1Day");
+      if (r1) r1.checked = p.remind1Day;
+      const r2 = document.getElementById("prefRemind2Hours");
+      if (r2) r2.checked = p.remind2Hours;
+      const ann = document.getElementById("prefAnnouncements");
+      if (ann) ann.checked = p.announcements;
+      const web = document.getElementById("prefChannelWeb");
+      if (web) web.checked = p.channelWeb;
+      const tg = document.getElementById("prefChannelTelegram");
+      if (tg) tg.checked = p.channelTelegram;
+    }
+  } catch (err) {
+    console.error("Error loading settings:", err);
+  }
+}
+
+// Generate Telegram Link Token OTP
+generateTgOtpBtn?.addEventListener("click", async () => {
+  const token = getAuthToken();
+  if (!token) return alert("Please log in first.");
+
+  try {
+    generateTgOtpBtn.disabled = true;
+    generateTgOtpBtn.textContent = "Generating...";
+
+    const res = await fetch("/api/v1/users/me/telegram-link-token", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const result = await res.json();
+    if (result.success) {
+      const { otp } = result.data;
+      const codeEl = document.getElementById("tgOtpCode");
+      if (codeEl) codeEl.textContent = otp;
+      document.getElementById("tgOtpResultBox")?.classList.remove("hidden");
+
+      const directLink = `https://t.me/CampusSuperAppBot?start=link_${otp}`;
+      const directBtn = document.getElementById("tgDirectLinkBtn");
+      if (directBtn) {
+        directBtn.href = directLink;
+      }
+    } else {
+      alert(`Error generating token: ${result.message}`);
+    }
+  } catch (err) {
+    alert(`Failed to generate token: ${err.message}`);
+  } finally {
+    generateTgOtpBtn.disabled = false;
+    generateTgOtpBtn.textContent = "🔑 Generate Linking Code (OTP)";
+  }
+});
+
+// Save Notification Preferences Form
+settingsPrefForm?.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const token = getAuthToken();
+  if (!token) return alert("Please log in first.");
+
+  const payload = {
+    remind3Days: document.getElementById("prefRemind3Days")?.checked ?? true,
+    remind1Day: document.getElementById("prefRemind1Day")?.checked ?? true,
+    remind2Hours: document.getElementById("prefRemind2Hours")?.checked ?? true,
+    announcements: document.getElementById("prefAnnouncements")?.checked ?? true,
+    channelWeb: document.getElementById("prefChannelWeb")?.checked ?? true,
+    channelTelegram: document.getElementById("prefChannelTelegram")?.checked ?? true,
+  };
+
+  try {
+    const res = await fetch("/api/v1/notifications/preferences", {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(payload),
+    });
+    const result = await res.json();
+    if (result.success) {
+      alert("✅ Notification preferences updated successfully!");
+    } else {
+      alert(`Error updating preferences: ${result.message}`);
+    }
+  } catch (err) {
+    alert(`Failed to save preferences: ${err.message}`);
+  }
+});
+
 // Initial boot
 document.addEventListener("DOMContentLoaded", () => {
   checkAuthSession();

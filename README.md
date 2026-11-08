@@ -426,6 +426,43 @@ npm test
 - `/ai <prompt>` or `/ask <prompt>` — 24/7 academic tutoring directly in Telegram with formatted responses, grounded source citations, and daily quota metrics.
 - `🤖 AI Assistant` — Interactive main menu button with usage guidance and web deep links.
 
+---
+
+## 16. Phase 9 Endpoints & Features Reference
+
+### Telegram Bot and Website Unification
+
+Phase 9 seamlessly unifies the university web application and the interactive Telegram companion bot into a synchronized academic ecosystem with bidirectional state synchronization, full command suite coverage, automated deadline reminder dispatching, and clean pagination.
+
+#### Unified Navigation & Expanded Telegram Menu
+The Telegram Bot features a comprehensive 14-button main menu and full command coverage:
+- `🎓 Join Group` (`join_group`) — Verifies student's Campus ID against the registry and issues single-use invitation links to official class groups.
+- `📚 My Courses` (`/courses`, `my_courses`, `courses_page_*`) — Displays all enrolled courses and taught courses with course codes, course titles, class cohort, semester, and instructor names with clean pagination.
+- `📤 Assignments` (`/assignments`, `assignment`, `assign_list`, `assign_page_*`) — Displays active assignment deadlines with real-time countdowns (`Due in X days`, `Due today`, `Due in 25 minutes!`), submission status, grades awarded, and direct upload triggers.
+- `📖 Study Materials` (`/materials [query]`, `study_materials`, `mat_page_*`) — Browses approved course materials, syllabus, lecture slides, and lab guides by course offering or keyword query, with file sizes and download metadata.
+- `🎯 Practice & Quizzes` (`/quizzes`, `/practice [topic]`, `quizzes_menu`) — Formal timed quiz evaluations and practice question arena with instant grading and explanations.
+- `🏛️ Archive & Past Exams` (`/archive [query]`, `/past_exams`, `academic_archive`) — University past examinations, solution keys, and student project archive.
+- `✍️ Student Blog` (`/blog [query]`, `/articles`, `community_blog`) — Discovers peer articles, ideas, and academic blog posts with inline reader previews.
+- `🤖 AI Assistant` (`/ai <prompt>`, `/ask <prompt>`, `ai_assistant`) — 24/7 AI academic tutoring grounded in official course materials with remaining daily token quota displays.
+- `📢 Announcements` (`/announcements`, `announcements_list`, `announcement`) — Recent university broadcasts for students, and broadcast creation interface for administrators and faculty.
+- `💬 Feedback` (`/feedback`) — Submit direct suggestions and reports to university administrators.
+- `👤 My Profile` (`/profile`, `/me`, `user_profile`) — Displays linked campus identity, full name, campus ID, email, roles, cohort, active enrollment count, Telegram handle, and AI token quota.
+- `⚙️ Settings & Notification Preferences` (`/settings`, `settings_menu`, `toggle_*`) — Interactive toggles for 3-day, 24-hour, and 2-hour automated assignment reminders, announcements, and Telegram delivery channel that immediately persist to PostgreSQL.
+- `🧑‍💼 Admin Panel` (`/admin`, `admin_panel`) — Real-time institutional metrics, student registry status, submission counts, and moderation queues.
+- `❓ Help` (`/help`) — Comprehensive quick-reference guide covering all bot features and commands.
+
+#### Bidirectional Web & Telegram Account Synchronization
+- **One-Time Password (OTP) Linking**:
+  - Web users generate an ephemeral 6-digit OTP token via `POST /api/v1/users/me/telegram-link-token` (15-minute TTL).
+  - Students link their Telegram account by sending `/link <otp>` or clicking the deep-link button `https://t.me/<bot_username>?start=link_<otp>`.
+  - Database verifies that the Telegram account is not bound to another student before updating `telegramChatId`, `telegramUsername`, and setting `isVerified: true`.
+- **Web Settings Companion**:
+  - Web platform includes a dedicated `⚙️ Telegram & Settings` modal.
+  - Real-time Telegram sync status badge (`Linked & Synced` vs `Unlinked`).
+  - Interactive checkboxes for 3-day, 24-hour, 2-hour reminders, announcements, and channel preferences (`channelWeb`, `channelTelegram`) synchronized with `PUT /api/v1/notifications/preferences`.
+  - Automated background deadline reminder worker (`ReminderService.startBackgroundReminderWorker`) runs continuously and dispatches customized Telegram alerts to all subscribed students.
+
+
 
 
 

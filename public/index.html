@@ -44,6 +44,11 @@
             </div>
           </div>
         </div>
+
+        <!-- Settings & Telegram Unification Button -->
+        <button id="openSettingsModalBtn" class="btn btn-secondary btn-sm" title="Settings & Telegram Unification">
+          ⚙️ Telegram & Settings
+        </button>
       </div>
     </div>
   </header>
@@ -1372,6 +1377,96 @@
       </div>
       <div id="aiAnalyticsBody" style="padding: 1rem 0;">
         <!-- Analytics metrics and top consumers rendered dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: SETTINGS & TELEGRAM UNIFICATION -->
+  <div id="settingsModal" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width: 750px;">
+      <div class="modal-header">
+        <h3>⚙️ University Settings & Telegram Companion</h3>
+        <button class="modal-close" onclick="closeModal('settingsModal')">&times;</button>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 1rem;">
+        <!-- Left: Telegram Integration -->
+        <div style="background: var(--neutral-50, #f8fafc); padding: 1.25rem; border-radius: var(--radius-md, 8px); border: 1px solid var(--neutral-200, #e2e8f0);">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
+            <h4 style="margin: 0; font-size: 1rem; color: var(--neutral-900, #0f172a);">📱 Telegram Bot Link</h4>
+            <span id="settingsTgBadge" class="brand-badge" style="background: var(--neutral-400); color: white;">Checking...</span>
+          </div>
+          <p style="font-size: 0.85rem; color: var(--neutral-600, #475569); line-height: 1.4; margin-bottom: 1rem;">
+            Link your Telegram account to receive instant deadline alerts, browse course materials, participate in quizzes, and query the AI assistant.
+          </p>
+
+          <div id="settingsTgLinkedInfo" class="hidden" style="margin-bottom: 1rem; padding: 0.75rem; background: white; border-radius: 6px; border: 1px solid var(--neutral-200);">
+            <div style="font-size: 0.85rem;"><strong>Linked Handle:</strong> <span id="settingsTgUsername">-</span></div>
+            <div style="font-size: 0.85rem; margin-top: 0.25rem;"><strong>Chat ID:</strong> <span id="settingsTgChatId">-</span></div>
+          </div>
+
+          <div id="settingsTgUnlinkedBox">
+            <button id="generateTgOtpBtn" class="btn btn-primary btn-sm" style="width: 100%;">
+              🔑 Generate Linking Code (OTP)
+            </button>
+            <div id="tgOtpResultBox" class="hidden" style="margin-top: 0.75rem; text-align: center; background: white; padding: 0.75rem; border-radius: 6px; border: 1px dashed var(--primary);">
+              <div style="font-size: 0.75rem; color: var(--neutral-500); text-transform: uppercase;">Your 6-Digit OTP</div>
+              <div id="tgOtpCode" style="font-size: 1.6rem; font-weight: 700; letter-spacing: 4px; color: var(--primary); margin: 0.25rem 0;">------</div>
+              <div id="tgOtpExpiry" style="font-size: 0.75rem; color: var(--neutral-600); margin-bottom: 0.5rem;">Valid for 15 minutes</div>
+              <a id="tgDirectLinkBtn" href="#" target="_blank" class="btn btn-secondary btn-sm" style="font-size: 0.8rem; width: 100%;">
+                📲 Open Bot in Telegram
+              </a>
+              <div style="font-size: 0.75rem; color: var(--neutral-500); margin-top: 0.5rem;">Or type <code>/link &lt;otp&gt;</code> in chat</div>
+            </div>
+          </div>
+
+          <div style="margin-top: 1.25rem; font-size: 0.8rem; color: var(--neutral-500);">
+            <strong>Bot Commands:</strong> <code>/courses</code>, <code>/assignments</code>, <code>/materials</code>, <code>/quizzes</code>, <code>/practice</code>, <code>/ai</code>
+          </div>
+        </div>
+
+        <!-- Right: Notification Preferences -->
+        <div style="background: var(--neutral-50, #f8fafc); padding: 1.25rem; border-radius: var(--radius-md, 8px); border: 1px solid var(--neutral-200, #e2e8f0);">
+          <h4 style="margin: 0 0 0.75rem 0; font-size: 1rem; color: var(--neutral-900, #0f172a);">🔔 Deadline Reminders</h4>
+          <p style="font-size: 0.85rem; color: var(--neutral-600, #475569); line-height: 1.4; margin-bottom: 1rem;">
+            Select which automated alerts you receive prior to upcoming assignment deadlines:
+          </p>
+
+          <form id="settingsPrefForm" style="display: flex; flex-direction: column; gap: 0.6rem;">
+            <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; cursor: pointer;">
+              <input type="checkbox" id="prefRemind3Days" checked />
+              <span>⏰ <strong>3 Days Before:</strong> Advance reminder</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; cursor: pointer;">
+              <input type="checkbox" id="prefRemind1Day" checked />
+              <span>⏰ <strong>24 Hours Before:</strong> Critical warning</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; cursor: pointer;">
+              <input type="checkbox" id="prefRemind2Hours" checked />
+              <span>🔥 <strong>2 Hours Before:</strong> Final urgency alert</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; cursor: pointer;">
+              <input type="checkbox" id="prefAnnouncements" checked />
+              <span>📢 <strong>Broadcasts:</strong> Official announcements</span>
+            </label>
+
+            <div style="border-top: 1px solid var(--neutral-200); margin: 0.5rem 0; padding-top: 0.5rem;">
+              <div style="font-size: 0.8rem; font-weight: 600; color: var(--neutral-700); margin-bottom: 0.4rem;">Notification Channels:</div>
+              <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; cursor: pointer; margin-bottom: 0.4rem;">
+                <input type="checkbox" id="prefChannelWeb" checked />
+                <span>🌐 In-App Web Bell Dropdown</span>
+              </label>
+              <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; cursor: pointer;">
+                <input type="checkbox" id="prefChannelTelegram" checked />
+                <span>📱 Telegram Direct Messages</span>
+              </label>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-sm" style="margin-top: 0.5rem;">
+              💾 Save Notification Preferences
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   </div>

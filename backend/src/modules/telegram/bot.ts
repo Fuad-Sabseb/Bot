@@ -1,18 +1,36 @@
 import TelegramBot from "node-telegram-bot-api";
 import { env } from "../../config/env";
 import { telegramState } from "./state";
-import { backButton, assignmentMenuKeyboard } from "./keyboards";
+import { backButton, assignmentMenuKeyboard, adminPanelKeyboard } from "./keyboards";
 import { sendMainMenu } from "./handlers/start.handler";
 import { handleJoinIdSubmission } from "./handlers/join.handler";
-import { handleDocumentUpload } from "./handlers/assignment.handler";
-import { handleAnnouncementBroadcast, isUserAdmin } from "./handlers/announcement.handler";
+import {
+  handleAssignmentsCommand,
+  handleDocumentUpload,
+} from "./handlers/assignment.handler";
+import {
+  handleAnnouncementsCommand,
+  handleAnnouncementBroadcast,
+  isUserAdmin,
+} from "./handlers/announcement.handler";
 import { handleFeedbackSubmission } from "./handlers/feedback.handler";
 import { handleAdminCallback } from "./handlers/admin.handler";
 import { handleHelp } from "./handlers/help.handler";
 import { handleArchiveCommand, handleArchiveCallback } from "./handlers/archive.handler";
-import { handleQuizzesCommand, handlePracticeCommand, handleQuizCallback } from "./handlers/quiz.handler";
+import {
+  handleQuizzesCommand,
+  handlePracticeCommand,
+  handleQuizCallback,
+} from "./handlers/quiz.handler";
 import { handleBlogCommand, handleBlogCallback } from "./handlers/blog.handler";
 import { handleAICommand, handleAICallback } from "./handlers/ai.handler";
+import { handleCoursesCommand } from "./handlers/courses.handler";
+import { handleMaterialsCommand } from "./handlers/materials.handler";
+import {
+  handleSettingsCommand,
+  handleSettingsToggle,
+} from "./handlers/settings.handler";
+import { handleProfileCommand } from "./handlers/profile.handler";
 import { UsersService } from "../users/users.service";
 
 let activeBotInstance: TelegramBot | null = null;
@@ -103,6 +121,22 @@ export function initTelegramBot(): TelegramBot | null {
     }
   });
 
+  // /courses command
+  bot.onText(/\/courses/, async (msg) => {
+    await handleCoursesCommand(bot, msg.chat.id);
+  });
+
+  // /assignments command
+  bot.onText(/\/assignments/, async (msg) => {
+    await handleAssignmentsCommand(bot, msg.chat.id);
+  });
+
+  // /materials <query> command
+  bot.onText(/\/materials(?:\s+(.+))?/, async (msg, match) => {
+    const query = match ? match[1] : undefined;
+    await handleMaterialsCommand(bot, msg.chat.id, query);
+  });
+
   // /archive <query> command
   bot.onText(/\/archive(?:\s+(.+))?/, async (msg, match) => {
     const query = match ? match[1] : undefined;
@@ -138,6 +172,54 @@ export function initTelegramBot(): TelegramBot | null {
     await handleAICommand(bot, msg.chat.id, prompt);
   });
 
+  // /announcements command
+  bot.onText(/\/announcements/, async (msg) => {
+    await handleAnnouncementsCommand(bot, msg.chat.id);
+  });
+
+  // /settings command
+  bot.onText(/\/settings/, async (msg) => {
+    await handleSettingsCommand(bot, msg.chat.id);
+  });
+
+  // /profile and /me commands
+  bot.onText(/\/(?:profile|me)/, async (msg) => {
+    await handleProfileCommand(bot, msg.chat.id);
+  });
+
+  // /help command
+  bot.onText(/\/help/, async (msg) => {
+    await handleHelp(bot, msg.chat.id);
+  });
+
+  // /feedback command
+  bot.onText(/\/feedback(?:\s+(.+))?/, async (msg, match) => {
+    const text = match ? match[1] : undefined;
+    if (text) {
+      await handleFeedbackSubmission(bot, msg.chat.id, text);
+    } else {
+      telegramState.setState(msg.chat.id, "feedback_waiting_text");
+      await bot.sendMessage(
+        msg.chat.id,
+        "💬 Type your feedback or suggestion for the class administrators:",
+        { reply_markup: backButton }
+      );
+    }
+  });
+
+  // /admin command
+  bot.onText(/\/admin/, async (msg) => {
+    const authorized = await isUserAdmin(msg.chat.id);
+    if (!authorized) {
+      await bot.sendMessage(msg.chat.id, "❌ Access denied. Administrator privileges required.");
+      return;
+    }
+    await bot.sendMessage(msg.chat.id, "🧑‍💼 *Admin Dashboard*", {
+      parse_mode: "Markdown",
+      reply_markup: adminPanelKeyboard,
+    });
+  });
+
   // Callback Query Dispatcher
   bot.on("callback_query", async (query) => {
     const chatId = query.message?.chat.id;
@@ -151,6 +233,8 @@ export function initTelegramBot(): TelegramBot | null {
     } catch {
       // Ignore if query expired
     }
+
+    if (data === "noop") return;
 
     if (data === "back_menu") {
       return sendMainMenu(bot, chatId, messageId);
@@ -166,31 +250,23 @@ export function initTelegramBot(): TelegramBot | null {
       });
     }
 
-    if (data === "quizzes_menu" || data.startsWith("prac_ans_")) {
-      return handleQuizCallback(bot, chatId, messageId, data);
+    // Courses & Offerings
+    if (data === "my_courses") {
+      return handleCoursesCommand(bot, chatId, 1, messageId);
+    }
+    if (data.startsWith("courses_page_")) {
+      const page = parseInt(data.replace("courses_page_", ""), 10) || 1;
+      return handleCoursesCommand(bot, chatId, page, messageId);
     }
 
-    if (data === "community_blog" || data.startsWith("blog_read_")) {
-      return handleBlogCallback(bot, chatId, messageId, data);
+    // Assignments
+    if (data === "assignment" || data === "assign_list") {
+      return handleAssignmentsCommand(bot, chatId, 1, messageId);
     }
-
-    if (data === "ai_assistant") {
-      return handleAICallback(bot, chatId, messageId);
+    if (data.startsWith("assign_page_")) {
+      const page = parseInt(data.replace("assign_page_", ""), 10) || 1;
+      return handleAssignmentsCommand(bot, chatId, page, messageId);
     }
-
-    if (data === "academic_archive") {
-      return handleArchiveCallback(bot, chatId, messageId);
-    }
-
-    if (data === "assignment") {
-      return bot.editMessageText("📤 *Choose Assignment Submission Type:*", {
-        chat_id: chatId,
-        message_id: messageId,
-        parse_mode: "Markdown",
-        reply_markup: assignmentMenuKeyboard,
-      });
-    }
-
     if (data === "assignment_individual") {
       telegramState.setState(chatId, "assignment_individual");
       return bot.sendMessage(chatId, "📄 Upload your *INDIVIDUAL* assignment file (PDF, DOCX, ZIP, max 50MB):", {
@@ -198,7 +274,6 @@ export function initTelegramBot(): TelegramBot | null {
         reply_markup: backButton,
       });
     }
-
     if (data === "assignment_group") {
       telegramState.setState(chatId, "assignment_group");
       return bot.sendMessage(chatId, "👥 Upload your *GROUP* assignment file (PDF, DOCX, ZIP, max 50MB):", {
@@ -207,13 +282,46 @@ export function initTelegramBot(): TelegramBot | null {
       });
     }
 
+    // Study Materials
+    if (data === "study_materials") {
+      return handleMaterialsCommand(bot, chatId, undefined, 1, messageId);
+    }
+    if (data.startsWith("mat_page_")) {
+      const page = parseInt(data.replace("mat_page_", ""), 10) || 1;
+      return handleMaterialsCommand(bot, chatId, undefined, page, messageId);
+    }
+
+    // Quizzes & Practice
+    if (data === "quizzes_menu" || data.startsWith("prac_ans_")) {
+      return handleQuizCallback(bot, chatId, messageId, data);
+    }
+
+    // Archive
+    if (data === "academic_archive") {
+      return handleArchiveCallback(bot, chatId, messageId);
+    }
+
+    // Blog
+    if (data === "community_blog" || data.startsWith("blog_read_")) {
+      return handleBlogCallback(bot, chatId, messageId, data);
+    }
+
+    // AI Assistant
+    if (data === "ai_assistant") {
+      return handleAICallback(bot, chatId, messageId);
+    }
+
+    // Announcements
+    if (data === "announcements_list") {
+      return handleAnnouncementsCommand(bot, chatId, messageId);
+    }
     if (data === "announcement") {
       const authorized = await isUserAdmin(chatId);
       if (!authorized) {
-        return bot.sendMessage(chatId, "❌ Access denied. Only administrators may broadcast announcements.");
+        return bot.sendMessage(chatId, "❌ Access denied. Only administrators or faculty may broadcast announcements.");
       }
       telegramState.setState(chatId, "announcement_waiting_text");
-      return bot.editMessageText("📢 Type your *important announcement* to broadcast to all class students:", {
+      return bot.editMessageText("📢 Type your *important announcement* to broadcast to all registered students:", {
         chat_id: chatId,
         message_id: messageId,
         parse_mode: "Markdown",
@@ -221,6 +329,7 @@ export function initTelegramBot(): TelegramBot | null {
       });
     }
 
+    // Feedback
     if (data === "feedback") {
       telegramState.setState(chatId, "feedback_waiting_text");
       return bot.editMessageText("💬 Type your feedback or suggestion for the class administrators:", {
@@ -230,10 +339,25 @@ export function initTelegramBot(): TelegramBot | null {
       });
     }
 
+    // User Profile
+    if (data === "user_profile") {
+      return handleProfileCommand(bot, chatId, messageId);
+    }
+
+    // Settings & Notification Preferences
+    if (data === "settings_menu") {
+      return handleSettingsCommand(bot, chatId, messageId);
+    }
+    if (data.startsWith("toggle_")) {
+      return handleSettingsToggle(bot, chatId, messageId, data);
+    }
+
+    // Admin Panel
     if (data.startsWith("admin_")) {
       return handleAdminCallback(bot, query);
     }
 
+    // Help
     if (data === "help") {
       return handleHelp(bot, chatId, messageId);
     }
@@ -270,6 +394,6 @@ export function initTelegramBot(): TelegramBot | null {
     return handleDocumentUpload(bot, msg);
   });
 
-  console.log("🚀 Refactored Telegram Bot Engine initialized successfully.");
+  console.log("🚀 Refactored Unified Telegram Bot Engine initialized successfully.");
   return bot;
 }
