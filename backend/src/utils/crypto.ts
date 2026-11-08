@@ -26,7 +26,10 @@ export function generateRandomToken(bytes = 32): string {
  */
 export function encryptPayload(payload: Record<string, any>, aad: string): string {
   const iv = crypto.randomBytes(12);
-  const key = Buffer.from(env.TOKEN_ENCRYPTION_KEY, "hex");
+  const rawKey = env.TOKEN_ENCRYPTION_KEY;
+  const key = rawKey.length === 64 && /^[0-9a-fA-F]+$/.test(rawKey)
+    ? Buffer.from(rawKey, "hex")
+    : crypto.createHash("sha256").update(rawKey).digest();
   const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
 
   cipher.setAAD(Buffer.from(aad, "utf8"));
@@ -46,7 +49,10 @@ export function decryptPayload<T = Record<string, any>>(encryptedStr: string, aa
   const iv = Buffer.from(parts[1], "hex");
   const authTag = Buffer.from(parts[2], "hex");
   const ciphertext = parts[3];
-  const key = Buffer.from(env.TOKEN_ENCRYPTION_KEY, "hex");
+  const rawKey = env.TOKEN_ENCRYPTION_KEY;
+  const key = rawKey.length === 64 && /^[0-9a-fA-F]+$/.test(rawKey)
+    ? Buffer.from(rawKey, "hex")
+    : crypto.createHash("sha256").update(rawKey).digest();
 
   const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
   decipher.setAAD(Buffer.from(aad, "utf8"));

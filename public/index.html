@@ -1,0 +1,1597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Campus Super App — Academic Portal</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+
+  <!-- Navigation Bar -->
+  <header>
+    <div class="nav-container">
+      <a href="/" class="brand">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+          <path d="M6 12v5c3 3 9 3 12 0v-5"/>
+        </svg>
+        <span>Campus Super App</span>
+        <span class="brand-badge">Academic Ecosystem</span>
+      </a>
+
+      <div class="header-actions">
+        <!-- Live Auth Status -->
+        <div id="authStatusContainer" style="display: flex; align-items: center; gap: 0.5rem;">
+          <span id="userDisplayName" style="font-size: 0.85rem; font-weight: 600; color: var(--neutral-800);">Guest</span>
+          <button id="openAuthModalBtn" class="btn btn-secondary btn-sm">🔑 Login / Switch</button>
+        </div>
+
+        <!-- Notification Bell -->
+        <div style="position: relative;">
+          <button id="notifBellBtn" class="btn btn-secondary btn-sm" title="Notifications">
+            🔔 <span id="notifBadge" class="brand-badge" style="background: var(--danger); color: white; display: none;">0</span>
+          </button>
+
+          <!-- Notification Dropdown -->
+          <div id="notifDropdown" class="notifications-dropdown">
+            <div style="padding: 0.75rem 1rem; border-bottom: 1px solid var(--neutral-200); display: flex; justify-content: space-between; align-items: center;">
+              <strong>Notifications</strong>
+              <button id="markAllReadBtn" class="btn btn-sm btn-secondary" style="font-size: 0.75rem;">Mark All Read</button>
+            </div>
+            <div id="notifList">
+              <div style="padding: 1rem; text-align: center; color: var(--neutral-600);">No notifications</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Settings & Telegram Unification Button -->
+        <button id="openSettingsModalBtn" class="btn btn-secondary btn-sm" title="Settings & Telegram Unification">
+          ⚙️ Telegram & Settings
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main>
+    <!-- Navigation Tabs -->
+    <nav class="tabs-nav">
+      <button class="tab-btn active" data-tab="dashboard">
+        📋 Student Assignment Dashboard
+      </button>
+      <button class="tab-btn" data-tab="materials">
+        📚 Learning Materials & Resources
+      </button>
+      <button class="tab-btn" data-tab="archive">
+        🏛️ Past Exams & Project Archive
+      </button>
+      <button class="tab-btn" data-tab="quizzes">
+        🎯 Practice & Quizzes
+      </button>
+      <button class="tab-btn" data-tab="blog">
+        ✍️ Community & Blog
+      </button>
+      <button class="tab-btn" data-tab="ai">
+        🤖 AI Assistant
+      </button>
+      <button class="tab-btn" data-tab="groups">
+        👥 Assignment Groups
+      </button>
+      <button class="tab-btn" data-tab="teacher">
+        🎓 Teacher Grading & Management
+      </button>
+      <button class="tab-btn" data-tab="admin" id="adminTabBtn" style="display: none;">
+        🧑‍💼 Admin & Analytics
+      </button>
+    </nav>
+
+    <!-- TAB 1: STUDENT ASSIGNMENT DASHBOARD -->
+    <section id="tab-dashboard" class="tab-content">
+      <!-- Metrics -->
+      <div class="dashboard-metrics">
+        <div class="metric-card">
+          <div class="metric-number" id="metricTotal">0</div>
+          <div class="metric-label">Total Assignments</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-number" id="metricUpcoming" style="color: var(--accent);">0</div>
+          <div class="metric-label">Upcoming Due</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-number" id="metricSubmitted" style="color: var(--success);">0</div>
+          <div class="metric-label">Submitted</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-number" id="metricOverdue" style="color: var(--danger);">0</div>
+          <div class="metric-label">Overdue</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-number" id="metricGraded" style="color: #8b5cf6;">0</div>
+          <div class="metric-label">Graded</div>
+        </div>
+      </div>
+
+      <!-- Filter Bar -->
+      <div class="filter-bar">
+        <div class="filter-group">
+          <label style="font-weight: 600; font-size: 0.9rem;">Status Filter:</label>
+          <select id="statusFilter">
+            <option value="ALL">All Categories</option>
+            <option value="UPCOMING">Upcoming / Due Soon</option>
+            <option value="SUBMITTED">Submitted</option>
+            <option value="OVERDUE">Overdue</option>
+            <option value="GRADED">Graded</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label style="font-weight: 600; font-size: 0.9rem;">Type:</label>
+          <select id="typeFilter">
+            <option value="ALL">All Types</option>
+            <option value="INDIVIDUAL">Individual</option>
+            <option value="GROUP">Group</option>
+          </select>
+        </div>
+
+        <button id="refreshDashboardBtn" class="btn btn-secondary btn-sm">🔄 Refresh</button>
+      </div>
+
+      <!-- Assignment Cards Container -->
+      <div id="assignmentsList">
+        <div style="text-align: center; padding: 2rem; color: var(--neutral-600);">Loading assignments...</div>
+      </div>
+    </section>
+
+    <!-- TAB 2: ASSIGNMENT GROUPS -->
+    <section id="tab-groups" class="tab-content hidden">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+        <div>
+          <h2>Group Collaboration Hub</h2>
+          <p style="color: var(--neutral-600); font-size: 0.9rem;">Form or join a team for group assignments before submission.</p>
+        </div>
+        <button id="openCreateGroupBtn" class="btn btn-primary">➕ Create New Group</button>
+      </div>
+
+      <div class="filter-bar">
+        <div class="filter-group">
+          <label style="font-weight: 600;">Select Group Assignment:</label>
+          <select id="groupAssignmentSelect">
+            <option value="">Select an assignment...</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="groupsList">
+        <div style="text-align: center; padding: 2rem; color: var(--neutral-600);">Select an assignment to view or form teams.</div>
+      </div>
+    </section>
+
+    <!-- TAB 3: TEACHER GRADING & MANAGEMENT -->
+    <section id="tab-teacher" class="tab-content hidden">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+        <div>
+          <h2>Course Instructor & Grading Console</h2>
+          <p style="color: var(--neutral-600); font-size: 0.9rem;">Publish assignments, manage deadlines, and grade student submissions.</p>
+        </div>
+        <button id="openCreateAssignmentModalBtn" class="btn btn-primary">➕ Create Assignment</button>
+      </div>
+
+      <div class="filter-bar">
+        <div class="filter-group">
+          <label style="font-weight: 600;">Course Offering:</label>
+          <select id="teacherOfferingSelect">
+            <option value="">Select course offering...</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Teacher Submissions Table -->
+      <div id="teacherSubmissionsSection" style="background: white; border-radius: var(--radius); padding: 1.5rem; border: 1px solid var(--neutral-200); box-shadow: var(--shadow);">
+        <h3 style="margin-bottom: 1rem;">Student Submissions For Review</h3>
+        <div id="submissionsTableContainer">
+          <p style="color: var(--neutral-600);">Select a course offering to view assignments and student submissions.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: LEARNING MATERIALS & ACADEMIC RESOURCES -->
+    <section id="tab-materials" class="tab-content hidden">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+        <div>
+          <h2>Academic Learning Resources Library</h2>
+          <p style="color: var(--neutral-600); font-size: 0.9rem;">Browse lecture notes, slides, reference books, tutorials, and past study materials.</p>
+        </div>
+        <button id="openUploadMaterialModalBtn" class="btn btn-primary">📤 Upload New Resource</button>
+      </div>
+
+      <!-- Resource Metrics -->
+      <div class="dashboard-metrics" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
+        <div class="metric-card">
+          <div class="metric-number" id="metricMaterialsTotal">0</div>
+          <div class="metric-label">Approved Resources</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-number" id="metricMaterialsDownloads" style="color: var(--success);">0</div>
+          <div class="metric-label">Total Downloads</div>
+        </div>
+      </div>
+
+      <!-- Search & Filters -->
+      <div class="filter-bar">
+        <div class="filter-group" style="flex: 1; min-width: 200px;">
+          <input type="text" id="materialsSearchInput" placeholder="🔍 Search resources by keyword or topic..." style="width: 100%;" />
+        </div>
+
+        <div class="filter-group">
+          <label style="font-weight: 600; font-size: 0.85rem;">Category:</label>
+          <select id="materialsCategoryFilter">
+            <option value="">All Categories</option>
+            <option value="LECTURE_SLIDES">Lecture Slides</option>
+            <option value="LECTURE_NOTES">Lecture Notes</option>
+            <option value="PDF_BOOKS">PDF Textbooks</option>
+            <option value="REFERENCE_BOOKS">Reference Books</option>
+            <option value="PROGRAMMING_RESOURCES">Programming Tutorials</option>
+            <option value="LABORATORY_MATERIALS">Lab Guides</option>
+            <option value="TUTORIAL_SHEETS">Tutorial Sheets</option>
+            <option value="PREVIOUS_ASSIGNMENTS">Previous Assignments</option>
+            <option value="OTHER">Other Academic</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label style="font-weight: 600; font-size: 0.85rem;">Course Offering:</label>
+          <select id="materialsOfferingFilter">
+            <option value="">All Enrolled Courses</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label style="font-weight: 600; font-size: 0.85rem;">Sort By:</label>
+          <select id="materialsSortBy">
+            <option value="newest">Newest First</option>
+            <option value="downloads">Most Downloaded</option>
+            <option value="title">Alphabetical</option>
+          </select>
+        </div>
+
+        <button id="refreshMaterialsBtn" class="btn btn-secondary btn-sm">🔄 Refresh</button>
+      </div>
+
+      <!-- Moderation Queue Notice (For Teachers & Admins) -->
+      <div id="materialsModerationSection" class="hidden" style="margin-bottom: 1.5rem; background: #fffbeb; border: 1px solid #fde68a; border-radius: var(--radius); padding: 1.25rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+          <h4 style="color: #92400e;">🛡️ Pending Moderation Queue</h4>
+          <span id="pendingModerationBadge" class="badge badge-late">0 Pending</span>
+        </div>
+        <div id="pendingModerationList">Loading queue...</div>
+      </div>
+
+      <!-- Materials Grid Container -->
+      <div id="materialsList">
+        <div style="text-align: center; padding: 2rem; color: var(--neutral-600);">Loading learning materials...</div>
+      </div>
+    </section>
+
+    <!-- TAB 5: ACADEMIC ARCHIVE & PAST EXAMS -->
+    <section id="tab-archive" class="tab-content hidden">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+        <div>
+          <h2>🏛️ University Academic Archive & Past Papers</h2>
+          <p style="color: var(--neutral-600); font-size: 0.9rem;">Browse past exams, projects, official answer keys, and student reference materials.</p>
+        </div>
+        <button id="openUploadArchiveBtn" class="btn btn-primary">➕ Contribute to Archive</button>
+      </div>
+
+      <!-- Resource Type Quick Filter Pills -->
+      <div style="display: flex; gap: 0.5rem; margin-bottom: 1.25rem; flex-wrap: wrap;">
+        <button class="btn btn-sm archive-type-pill active" data-type="" style="border-radius: 9999px;">All Archive</button>
+        <button class="btn btn-sm archive-type-pill btn-secondary" data-type="PAST_EXAM" style="border-radius: 9999px;">📝 Past Exam Papers</button>
+        <button class="btn btn-sm archive-type-pill btn-secondary" data-type="PROJECT" style="border-radius: 9999px;">💻 Projects & Research</button>
+        <button class="btn btn-sm archive-type-pill btn-secondary" data-type="SOLUTION" style="border-radius: 9999px;">💡 Solutions & Keys</button>
+        <button class="btn btn-sm archive-type-pill btn-secondary" data-type="REFERENCE" style="border-radius: 9999px;">📚 Reference Submissions</button>
+      </div>
+
+      <!-- Search & Filters -->
+      <div class="filter-bar">
+        <div class="filter-group" style="flex: 1; min-width: 200px;">
+          <input type="text" id="archiveSearchInput" placeholder="🔍 Search by subject, paper, or keyword..." style="width: 100%;" />
+        </div>
+
+        <div class="filter-group">
+          <label style="font-weight: 600; font-size: 0.85rem;">Assessment Type:</label>
+          <select id="archiveAssessmentFilter">
+            <option value="">All Assessment Types</option>
+            <option value="MIDTERM">Midterm Exam</option>
+            <option value="FINAL">Final Exam</option>
+            <option value="QUIZ">Quiz / Test</option>
+            <option value="LAB_EXAM">Lab / Practical Exam</option>
+            <option value="GRADUATION_PROJECT">Graduation Project</option>
+            <option value="TERM_PROJECT">Term / Course Project</option>
+            <option value="ASSIGNMENT">Past Assignment</option>
+            <option value="OTHER">Other</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label style="font-weight: 600; font-size: 0.85rem;">Exam Year:</label>
+          <select id="archiveYearFilter">
+            <option value="">All Years</option>
+            <option value="2025">2025</option>
+            <option value="2024">2024</option>
+            <option value="2023">2023</option>
+            <option value="2022">2022</option>
+            <option value="2021">2021</option>
+            <option value="2020">2020</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label style="font-weight: 600; font-size: 0.85rem;">Source:</label>
+          <select id="archiveOfficialFilter">
+            <option value="">All Sources</option>
+            <option value="true">⭐ Official Solutions Only</option>
+            <option value="false">👤 Student Reference Submissions</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label style="font-weight: 600; font-size: 0.85rem;">Course Offering:</label>
+          <select id="archiveOfferingFilter">
+            <option value="">All Courses</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label style="font-weight: 600; font-size: 0.85rem;">Sort By:</label>
+          <select id="archiveSortBy">
+            <option value="newest">Newest First</option>
+            <option value="examYear">Exam Year (Recent First)</option>
+            <option value="downloads">Most Downloaded</option>
+            <option value="title">Alphabetical</option>
+          </select>
+        </div>
+
+        <button id="refreshArchiveBtn" class="btn btn-secondary btn-sm">🔄 Refresh</button>
+      </div>
+
+      <!-- Moderation Queue Notice (For Teachers & Admins) -->
+      <div id="archiveModerationSection" class="hidden" style="margin-bottom: 1.5rem; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: var(--radius); padding: 1.25rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+          <h4 style="color: #1e40af;">🛡️ Archive Pending Review Queue</h4>
+          <span id="archivePendingBadge" class="badge badge-late">0 Pending</span>
+        </div>
+        <div id="archivePendingList">Loading moderation queue...</div>
+      </div>
+
+      <!-- Archive Cards Grid -->
+      <div id="archiveList">
+        <div style="text-align: center; padding: 2rem; color: var(--neutral-600);">Loading academic archive...</div>
+      </div>
+    </section>
+
+    <!-- TAB 6: PRACTICE QUESTIONS & QUIZZES -->
+    <section id="tab-quizzes" class="tab-content hidden">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+        <div>
+          <h2>🎯 Course Quizzes & Practice Arena</h2>
+          <p style="color: var(--neutral-600); font-size: 0.9rem;">Test your mastery on topic practice questions or take formal timed quizzes.</p>
+        </div>
+        <div style="display: flex; gap: 0.5rem;" id="quizInstructorActions">
+          <button id="openCreateQuestionModalBtn" class="btn btn-secondary">➕ Add Question</button>
+          <button id="openCreateQuizModalBtn" class="btn btn-primary">➕ Create Quiz</button>
+        </div>
+      </div>
+
+      <!-- Sub-View Navigation Pills -->
+      <div style="display: flex; gap: 0.5rem; margin-bottom: 1.25rem; flex-wrap: wrap;">
+        <button class="btn btn-sm quiz-view-pill active" data-view="quizzes" style="border-radius: 9999px;">🎯 Formal Quizzes</button>
+        <button class="btn btn-sm quiz-view-pill btn-secondary" data-view="practice" style="border-radius: 9999px;">💡 Practice Arena</button>
+      </div>
+
+      <!-- Filter Bar -->
+      <div class="filter-bar">
+        <div class="filter-group">
+          <label style="font-weight: 600; font-size: 0.85rem;">Course Offering:</label>
+          <select id="quizzesOfferingFilter">
+            <option value="">All Enrolled Courses</option>
+          </select>
+        </div>
+
+        <div class="filter-group" id="practiceFilterGroup" style="display: none;">
+          <label style="font-weight: 600; font-size: 0.85rem;">Difficulty:</label>
+          <select id="practiceDifficultyFilter">
+            <option value="">All Difficulties</option>
+            <option value="EASY">Easy</option>
+            <option value="MEDIUM">Medium</option>
+            <option value="HARD">Hard</option>
+          </select>
+        </div>
+
+        <div class="filter-group" style="flex: 1; min-width: 200px;">
+          <input type="text" id="quizzesSearchInput" placeholder="🔍 Search quizzes or practice topics..." style="width: 100%;" />
+        </div>
+
+        <button id="refreshQuizzesBtn" class="btn btn-secondary btn-sm">🔄 Refresh</button>
+      </div>
+
+      <!-- Container: Quizzes List -->
+      <div id="quizzesContainer">
+        <div style="text-align: center; padding: 2rem; color: var(--neutral-600);">Loading quizzes...</div>
+      </div>
+
+      <!-- Container: Practice Questions List -->
+      <div id="practiceContainer" class="hidden">
+        <div style="text-align: center; padding: 2rem; color: var(--neutral-600);">Loading practice questions...</div>
+      </div>
+    </section>
+
+    <!-- TAB 7: COMMUNITY & STUDENT BLOG -->
+    <section id="tab-blog" class="tab-content hidden">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+        <div>
+          <h2>✍️ Student Academic Blog & Knowledge Community</h2>
+          <p style="color: var(--neutral-600); font-size: 0.9rem;">Publish tutorials, share project ideas, discuss academic subjects, and collaborate.</p>
+        </div>
+        <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+          <button id="openCreatePostModalBtn" class="btn btn-primary">➕ Write Article</button>
+          <button id="viewBookmarksBtn" class="btn btn-secondary">⭐ Bookmarks</button>
+          <button id="viewMyPostsBtn" class="btn btn-secondary">📝 My Articles</button>
+          <button id="viewAdminModerationBtn" class="btn btn-danger" style="display: none;">🛡️ Moderation</button>
+        </div>
+      </div>
+
+      <!-- Category Filter Pills -->
+      <div style="display: flex; gap: 0.5rem; margin-bottom: 1.25rem; flex-wrap: wrap;" id="blogCategoryPills">
+        <button class="btn btn-sm blog-cat-pill active" data-category="" style="border-radius: 9999px;">🌐 All Topics</button>
+        <button class="btn btn-sm blog-cat-pill btn-secondary" data-category="Programming" style="border-radius: 9999px;">💻 Programming</button>
+        <button class="btn btn-sm blog-cat-pill btn-secondary" data-category="Software Engineering" style="border-radius: 9999px;">⚙️ Software Engineering</button>
+        <button class="btn btn-sm blog-cat-pill btn-secondary" data-category="Technology" style="border-radius: 9999px;">🚀 Technology</button>
+        <button class="btn btn-sm blog-cat-pill btn-secondary" data-category="Project Ideas" style="border-radius: 9999px;">💡 Project Ideas</button>
+        <button class="btn btn-sm blog-cat-pill btn-secondary" data-category="Academic Discussion" style="border-radius: 9999px;">📚 Academic Discussion</button>
+        <button class="btn btn-sm blog-cat-pill btn-secondary" data-category="Career Development" style="border-radius: 9999px;">💼 Career</button>
+        <button class="btn btn-sm blog-cat-pill btn-secondary" data-category="Student Experiences" style="border-radius: 9999px;">🎓 Student Life</button>
+      </div>
+
+      <!-- Filter Bar -->
+      <div class="filter-bar">
+        <div class="filter-group" style="flex: 2; min-width: 240px;">
+          <input type="text" id="blogSearchInput" placeholder="🔍 Search articles by title, content, or tags..." style="width: 100%;" />
+        </div>
+
+        <div class="filter-group">
+          <label style="font-weight: 600; font-size: 0.85rem;">Sort By:</label>
+          <select id="blogSortSelect">
+            <option value="recent">⏱️ Most Recent</option>
+            <option value="popular">🔥 Most Viewed / Popular</option>
+          </select>
+        </div>
+
+        <button id="refreshBlogBtn" class="btn btn-secondary btn-sm">🔄 Refresh</button>
+      </div>
+
+      <!-- Container: Blog Posts Grid -->
+      <div id="blogPostsContainer" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.5rem; margin-top: 1.5rem;">
+        <div style="text-align: center; padding: 2rem; color: var(--neutral-600); grid-column: 1 / -1;">Loading articles...</div>
+      </div>
+    </section>
+
+    <!-- TAB 8: AI ACADEMIC ASSISTANT & RAG -->
+    <section id="tab-ai" class="tab-content hidden">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+        <div>
+          <h2>🤖 AI Academic Assistant & Document Intelligence</h2>
+          <p style="color: var(--neutral-600); font-size: 0.9rem;">24/7 academic tutoring, lecture summarization, code debugging, and document-grounded answers.</p>
+        </div>
+        <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+          <span id="aiQuotaBadge" class="badge" style="background: #e0e7ff; color: #4338ca; font-size: 0.85rem; padding: 0.4rem 0.75rem;">⚡ Daily Quota: 50,000 tokens</span>
+          <button id="openAiAnalyticsBtn" class="btn btn-secondary btn-sm" style="display: none;">📊 AI Analytics</button>
+        </div>
+      </div>
+
+      <!-- Split Layout: Sidebar Threads + Main Chat Area -->
+      <div style="display: grid; grid-template-columns: 280px 1fr; gap: 1.5rem; min-height: 620px; background: #fff; border-radius: var(--radius); border: 1px solid var(--neutral-200); overflow: hidden;">
+        <!-- Left: Conversations Sidebar -->
+        <div style="background: #f8fafc; border-right: 1px solid var(--neutral-200); display: flex; flex-direction: column;">
+          <div style="padding: 1rem; border-bottom: 1px solid var(--neutral-200);">
+            <button id="newAiChatBtn" class="btn btn-primary btn-sm" style="width: 100%; justify-content: center;">➕ New Conversation</button>
+          </div>
+          <div id="aiConversationsList" style="flex: 1; overflow-y: auto; padding: 0.5rem; display: flex; flex-direction: column; gap: 0.25rem;">
+            <div style="text-align: center; padding: 1.5rem; color: var(--neutral-600); font-size: 0.85rem;">Loading conversations...</div>
+          </div>
+        </div>
+
+        <!-- Right: Chat Arena -->
+        <div style="display: flex; flex-direction: column; height: 100%;">
+          <!-- Header Bar: Mode Pills & Grounding Scope -->
+          <div style="padding: 0.75rem 1rem; border-bottom: 1px solid var(--neutral-200); background: #fafafa; display: flex; flex-direction: column; gap: 0.5rem;">
+            <div style="display: flex; gap: 0.35rem; flex-wrap: wrap;" id="aiModePills">
+              <button class="btn btn-sm ai-mode-pill active" data-mode="general" style="border-radius: 9999px; font-size: 0.75rem;">💬 General Academic</button>
+              <button class="btn btn-sm ai-mode-pill btn-secondary" data-mode="code" style="border-radius: 9999px; font-size: 0.75rem;">💻 Code & Debug</button>
+              <button class="btn btn-sm ai-mode-pill btn-secondary" data-mode="math" style="border-radius: 9999px; font-size: 0.75rem;">📐 Math & Proofs</button>
+              <button class="btn btn-sm ai-mode-pill btn-secondary" data-mode="summarize" style="border-radius: 9999px; font-size: 0.75rem;">📝 Summarize Notes</button>
+              <button class="btn btn-sm ai-mode-pill btn-secondary" data-mode="exam_prep" style="border-radius: 9999px; font-size: 0.75rem;">🎯 Exam Prep</button>
+              <button class="btn btn-sm ai-mode-pill btn-secondary" data-mode="study_plan" style="border-radius: 9999px; font-size: 0.75rem;">📅 Study Plan</button>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <label style="font-size: 0.75rem; font-weight: 600; color: var(--neutral-600);">📚 Grounding Scope:</label>
+              <select id="aiCourseOfferingFilter" style="font-size: 0.8rem; padding: 0.2rem 0.5rem; border-radius: 4px; border: 1px solid var(--neutral-300);">
+                <option value="">All Approved Repository Documents</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Messages Stream Container -->
+          <div id="aiMessagesContainer" style="flex: 1; overflow-y: auto; padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem; background: #ffffff;">
+            <div style="text-align: center; margin: auto; max-width: 440px; color: var(--neutral-600);">
+              <p style="font-size: 2.5rem; margin-bottom: 0.5rem;">🤖</p>
+              <h3 style="margin-bottom: 0.5rem;">How can I help with your academics today?</h3>
+              <p style="font-size: 0.85rem;">Ask questions about algorithms, mathematical derivations, exam preparation, or request a customized study plan.</p>
+            </div>
+          </div>
+
+          <!-- Chat Input Footer -->
+          <div style="padding: 1rem; border-top: 1px solid var(--neutral-200); background: #f8fafc;">
+            <form id="aiChatForm" style="display: flex; gap: 0.5rem; align-items: flex-end;">
+              <textarea id="aiPromptInput" required rows="2" placeholder="Ask a question or request assistance... (Shift+Enter for newline, Enter to send)" style="flex: 1; resize: none; border-radius: var(--radius); padding: 0.6rem 0.85rem; font-size: 0.95rem; font-family: inherit;"></textarea>
+              <button type="submit" id="sendAiPromptBtn" class="btn btn-primary" style="height: 52px; padding: 0 1.25rem; font-weight: 600;">
+                Send 🚀
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 9: MASTER ADMINISTRATION & INSTITUTIONAL ANALYTICS -->
+    <section id="tab-admin" class="tab-content hidden">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+        <div>
+          <h2>🧑‍💼 Master Administration & Institutional Analytics</h2>
+          <p style="color: var(--neutral-600); font-size: 0.9rem;">Comprehensive oversight of campus cohorts, academic operations, moderation queues, and system health.</p>
+        </div>
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+          <button id="refreshAdminAnalyticsBtn" class="btn btn-secondary btn-sm">🔄 Refresh Metrics</button>
+        </div>
+      </div>
+
+      <!-- Institutional Metric Cards Grid -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
+        <div class="card" style="padding: 1.25rem; border-left: 4px solid var(--primary);">
+          <div style="font-size: 0.8rem; color: var(--neutral-500); text-transform: uppercase;">Students & Users</div>
+          <div id="statTotalUsers" style="font-size: 1.8rem; font-weight: 700; color: var(--neutral-900); margin: 0.25rem 0;">0</div>
+          <div style="font-size: 0.8rem; color: var(--success);"><span id="statVerifiedStudents">0</span> Verified Students</div>
+        </div>
+
+        <div class="card" style="padding: 1.25rem; border-left: 4px solid #06b6d4;">
+          <div style="font-size: 0.8rem; color: var(--neutral-500); text-transform: uppercase;">Active Offerings</div>
+          <div id="statActiveOfferings" style="font-size: 1.8rem; font-weight: 700; color: var(--neutral-900); margin: 0.25rem 0;">0</div>
+          <div style="font-size: 0.8rem; color: var(--neutral-600);"><span id="statTotalClasses">0</span> Classes | <span id="statTotalCourses">0</span> Courses</div>
+        </div>
+
+        <div class="card" style="padding: 1.25rem; border-left: 4px solid #10b981;">
+          <div style="font-size: 0.8rem; color: var(--neutral-500); text-transform: uppercase;">Assignment Turnout</div>
+          <div id="statCompletionRate" style="font-size: 1.8rem; font-weight: 700; color: var(--neutral-900); margin: 0.25rem 0;">0%</div>
+          <div style="font-size: 0.8rem; color: var(--neutral-600);"><span id="statSubmissions">0</span> Submissions (<span id="statGradedSubmissions">0</span> Graded)</div>
+        </div>
+
+        <div class="card" style="padding: 1.25rem; border-left: 4px solid #f59e0b;">
+          <div style="font-size: 0.8rem; color: var(--neutral-500); text-transform: uppercase;">Assessment & Quizzes</div>
+          <div id="statQuizPassRate" style="font-size: 1.8rem; font-weight: 700; color: var(--neutral-900); margin: 0.25rem 0;">0%</div>
+          <div style="font-size: 0.8rem; color: var(--neutral-600);"><span id="statCompletedAttempts">0</span> Attempts | Avg: <span id="statAvgQuizScore">0</span>%</div>
+        </div>
+
+        <div class="card" style="padding: 1.25rem; border-left: 4px solid #8b5cf6;">
+          <div style="font-size: 0.8rem; color: var(--neutral-500); text-transform: uppercase;">Resources & Downloads</div>
+          <div id="statApprovedMaterials" style="font-size: 1.8rem; font-weight: 700; color: var(--neutral-900); margin: 0.25rem 0;">0</div>
+          <div style="font-size: 0.8rem; color: var(--neutral-600);"><span id="statApprovedArchive">0</span> Past Exams & Projects</div>
+        </div>
+
+        <div class="card" style="padding: 1.25rem; border-left: 4px solid #ec4899;">
+          <div style="font-size: 0.8rem; color: var(--neutral-500); text-transform: uppercase;">Institutional AI Usage</div>
+          <div id="statAiTokens" style="font-size: 1.8rem; font-weight: 700; color: var(--neutral-900); margin: 0.25rem 0;">0</div>
+          <div style="font-size: 0.8rem; color: var(--neutral-600);"><span id="statAiRequests">0</span> Total Assistant Queries</div>
+        </div>
+      </div>
+
+      <!-- Two Columns: System Health & Moderation Queues -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem;">
+        <!-- Left: Infrastructure Health -->
+        <div class="card" style="padding: 1.25rem;">
+          <h4 style="margin: 0 0 1rem 0; font-size: 1rem; color: var(--neutral-900);">🖥️ System Health & Infrastructure</h4>
+          <div id="adminSystemHealthBody" style="display: flex; flex-direction: column; gap: 0.6rem; font-size: 0.85rem;">
+            <div>Loading system telemetry...</div>
+          </div>
+        </div>
+
+        <!-- Right: Moderation Queues & Actions -->
+        <div class="card" style="padding: 1.25rem;">
+          <h4 style="margin: 0 0 1rem 0; font-size: 1rem; color: var(--neutral-900);">🛡️ Moderation Queues & Safety Actions</h4>
+          <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: var(--neutral-50); border-radius: 6px; border: 1px solid var(--neutral-200);">
+              <div>
+                <strong>Learning Materials Queue:</strong>
+                <span id="queuePendingMaterials" style="margin-left: 0.5rem; font-weight: 700; color: var(--warning);">0</span> pending review
+              </div>
+              <button class="btn btn-secondary btn-sm" onclick="document.getElementById('openModerateMaterialModalBtn')?.click()">Review</button>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: var(--neutral-50); border-radius: 6px; border: 1px solid var(--neutral-200);">
+              <div>
+                <strong>Exam & Project Archive Queue:</strong>
+                <span id="queuePendingArchive" style="margin-left: 0.5rem; font-weight: 700; color: var(--warning);">0</span> pending review
+              </div>
+              <button class="btn btn-secondary btn-sm" onclick="document.getElementById('openModerateArchiveModalBtn')?.click()">Review</button>
+            </div>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; background: var(--neutral-50); border-radius: 6px; border: 1px solid var(--neutral-200);">
+              <div>
+                <strong>Community Safety & Reports:</strong>
+                <span id="queuePendingReports" style="margin-left: 0.5rem; font-weight: 700; color: var(--danger);">0</span> unresolved reports
+              </div>
+              <button class="btn btn-secondary btn-sm" onclick="document.getElementById('openBlogModerationModalBtn')?.click()">Inspect</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Audit Logs Table -->
+      <div class="card" style="padding: 1.25rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <h4 style="margin: 0; font-size: 1rem; color: var(--neutral-900);">📋 Security & Administrative Audit Trail</h4>
+          <span style="font-size: 0.8rem; color: var(--neutral-500);">Live PostgreSQL Audit Logs</span>
+        </div>
+        <div id="adminAuditLogsTableContainer" style="overflow-x: auto;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+            <thead>
+              <tr style="border-bottom: 2px solid var(--neutral-200); text-align: left;">
+                <th style="padding: 0.5rem;">Action</th>
+                <th style="padding: 0.5rem;">Actor</th>
+                <th style="padding: 0.5rem;">Target Entity</th>
+                <th style="padding: 0.5rem;">Details</th>
+                <th style="padding: 0.5rem;">IP Address</th>
+                <th style="padding: 0.5rem;">Timestamp</th>
+              </tr>
+            </thead>
+            <tbody id="adminAuditLogsBody">
+              <tr><td colspan="6" style="padding: 1rem; text-align: center; color: var(--neutral-500);">Loading audit logs...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- MODAL: LOGIN / AUTHENTICATION -->
+  <div id="authModal" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width: 480px;">
+      <div class="modal-header">
+        <h3>User Authentication</h3>
+        <button class="modal-close" onclick="closeModal('authModal')">&times;</button>
+      </div>
+
+      <!-- Form Login -->
+      <form id="loginForm" style="margin-bottom: 1.5rem;">
+        <div style="margin-bottom: 1rem;">
+          <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Campus ID or Email</label>
+          <input type="text" id="loginIdentifier" required style="width: 100%;" placeholder="e.g. RU0008/17 or user@university.edu" />
+        </div>
+
+        <div style="margin-bottom: 1rem;">
+          <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Password</label>
+          <input type="password" id="loginPassword" required style="width: 100%;" placeholder="Enter password" />
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center;">
+          Log In
+        </button>
+      </form>
+
+      <hr style="border: 0; border-top: 1px solid var(--neutral-200); margin: 1.25rem 0;" />
+
+      <div>
+        <p style="font-size: 0.85rem; font-weight: 600; color: var(--neutral-600); margin-bottom: 0.5rem;">Or paste existing Bearer Access Token:</p>
+        <div style="display: flex; gap: 0.5rem;">
+          <input type="text" id="manualTokenInput" placeholder="eyJhbGciOi..." style="flex: 1;" />
+          <button id="saveManualTokenBtn" class="btn btn-secondary btn-sm">Use Token</button>
+        </div>
+      </div>
+
+      <div style="margin-top: 1.25rem; text-align: center;">
+        <button id="logoutBtn" class="btn btn-danger btn-sm" style="display: none;">Logout</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: SUBMISSION & VERSION HISTORY -->
+  <div id="submissionModal" class="modal-overlay hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="subModalTitle">Submit Assignment</h3>
+        <button class="modal-close" onclick="closeModal('submissionModal')">&times;</button>
+      </div>
+
+      <div id="subModalDetails" style="margin-bottom: 1rem;">
+        <!-- Assignment details populated by JS -->
+      </div>
+
+      <!-- Drag & Drop Zone -->
+      <div id="dropZone" class="upload-zone">
+        <p style="font-size: 1.5rem; margin-bottom: 0.5rem;">📁</p>
+        <p style="font-weight: 600;">Drag and drop your file here, or click to browse</p>
+        <p style="font-size: 0.8rem; color: var(--neutral-600); margin-top: 0.25rem;">Supports PDF, DOCX, ZIP, code archives (Max 50MB)</p>
+        <input type="file" id="submissionFileInput" style="display: none;" />
+        <p id="selectedFileName" style="font-weight: 600; color: var(--accent); margin-top: 0.5rem; display: none;"></p>
+      </div>
+
+      <button id="submitFileBtn" class="btn btn-success" style="width: 100%; justify-content: center;" disabled>
+        🚀 Confirm & Upload Submission
+      </button>
+
+      <!-- Version History -->
+      <div style="margin-top: 1.5rem;">
+        <h4>Submission Version History</h4>
+        <div id="versionHistoryTable">
+          <p style="color: var(--neutral-600); font-size: 0.85rem; margin-top: 0.5rem;">No submissions recorded yet.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CREATE ASSIGNMENT -->
+  <div id="createAssignmentModal" class="modal-overlay hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Create New Assignment</h3>
+        <button class="modal-close" onclick="closeModal('createAssignmentModal')">&times;</button>
+      </div>
+
+      <form id="createAssignmentForm">
+        <div style="margin-bottom: 1rem;">
+          <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Title *</label>
+          <input type="text" id="newTitle" required style="width: 100%;" placeholder="e.g. Distributed Key-Value Store" />
+        </div>
+
+        <div style="margin-bottom: 1rem;">
+          <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Description *</label>
+          <textarea id="newDescription" required rows="3" style="width: 100%;" placeholder="Summary of assignment objectives..."></textarea>
+        </div>
+
+        <div style="margin-bottom: 1rem;">
+          <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Detailed Instructions</label>
+          <textarea id="newInstructions" rows="3" style="width: 100%;" placeholder="Step-by-step submission guidelines..."></textarea>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+          <div>
+            <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Type</label>
+            <select id="newType" style="width: 100%;">
+              <option value="INDIVIDUAL">Individual</option>
+              <option value="GROUP">Group Project</option>
+            </select>
+          </div>
+          <div>
+            <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Max Marks</label>
+            <input type="number" id="newMaxMarks" value="100" style="width: 100%;" />
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+          <div>
+            <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Submission Due Date *</label>
+            <input type="datetime-local" id="newDueDate" required style="width: 100%;" />
+          </div>
+          <div>
+            <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Hard Cutoff Date</label>
+            <input type="datetime-local" id="newCutoffDate" style="width: 100%;" />
+          </div>
+        </div>
+
+        <div style="margin-bottom: 1.5rem;">
+          <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Attach Reference Materials (PDF/DOCX/ZIP)</label>
+          <input type="file" id="newAttachments" multiple style="width: 100%;" />
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center;">
+          Publish Assignment
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: GRADE SUBMISSION -->
+  <div id="gradeModal" class="modal-overlay hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Grade Student Submission</h3>
+        <button class="modal-close" onclick="closeModal('gradeModal')">&times;</button>
+      </div>
+
+      <div id="gradeModalDetails" style="margin-bottom: 1rem;"></div>
+
+      <form id="gradeForm">
+        <input type="hidden" id="gradeSubmissionId" />
+        <input type="hidden" id="gradeAssignmentId" />
+
+        <div style="margin-bottom: 1rem;">
+          <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Score Awarded *</label>
+          <input type="number" step="0.5" id="gradeScoreInput" required style="width: 100%; font-size: 1.25rem;" />
+        </div>
+
+        <div style="margin-bottom: 1.5rem;">
+          <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Written Feedback & Comments</label>
+          <textarea id="gradeFeedbackInput" rows="4" style="width: 100%;" placeholder="Detailed feedback for the student..."></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-success" style="width: 100%; justify-content: center;">
+          💾 Save Grade & Notify Student
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: CREATE GROUP -->
+  <div id="createGroupModal" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width: 450px;">
+      <div class="modal-header">
+        <h3>Create Assignment Group</h3>
+        <button class="modal-close" onclick="closeModal('createGroupModal')">&times;</button>
+      </div>
+
+      <form id="createGroupForm">
+        <div style="margin-bottom: 1.5rem;">
+          <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Group / Team Name *</label>
+          <input type="text" id="newGroupName" required style="width: 100%;" placeholder="e.g. Distributed Pioneers" />
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center;">
+          Create & Join as Leader
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: UPLOAD LEARNING MATERIAL -->
+  <div id="uploadMaterialModal" class="modal-overlay hidden">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Upload Learning Resource</h3>
+        <button class="modal-close" onclick="closeModal('uploadMaterialModal')">&times;</button>
+      </div>
+
+      <form id="uploadMaterialForm">
+        <div style="margin-bottom: 1rem;">
+          <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Resource Title *</label>
+          <input type="text" id="matTitle" required style="width: 100%;" placeholder="e.g. Distributed Consensus & Raft Slides" />
+        </div>
+
+        <div style="margin-bottom: 1rem;">
+          <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Description</label>
+          <textarea id="matDescription" rows="2" style="width: 100%;" placeholder="Brief summary of topics covered..."></textarea>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+          <div>
+            <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Category *</label>
+            <select id="matCategory" required style="width: 100%;">
+              <option value="LECTURE_SLIDES">Lecture Slides</option>
+              <option value="LECTURE_NOTES">Lecture Notes</option>
+              <option value="PDF_BOOKS">PDF Textbooks</option>
+              <option value="REFERENCE_BOOKS">Reference Books</option>
+              <option value="PROGRAMMING_RESOURCES">Programming Tutorials</option>
+              <option value="LABORATORY_MATERIALS">Lab Guides</option>
+              <option value="TUTORIAL_SHEETS">Tutorial Sheets</option>
+              <option value="PREVIOUS_ASSIGNMENTS">Previous Assignments</option>
+              <option value="OTHER">Other Academic</option>
+            </select>
+          </div>
+
+          <div>
+            <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Target Course Offering *</label>
+            <select id="matCourseOfferingSelect" required style="width: 100%;">
+              <option value="">Select course...</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="margin-bottom: 1rem;">
+          <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Tags (comma separated)</label>
+          <input type="text" id="matTags" style="width: 100%;" placeholder="e.g. raft,paxos,cloud,lecture1" />
+        </div>
+
+        <div style="margin-bottom: 1.5rem;">
+          <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Resource File (PDF, PPTX, DOCX, Code, ZIP — Max 100MB) *</label>
+          <input type="file" id="matFileInput" required style="width: 100%;" />
+        </div>
+
+        <button type="submit" id="uploadMaterialSubmitBtn" class="btn btn-primary" style="width: 100%; justify-content: center;">
+          🚀 Publish Resource
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: MODERATE MATERIAL -->
+  <div id="moderateMaterialModal" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width: 500px;">
+      <div class="modal-header">
+        <h3>Moderate Learning Resource</h3>
+        <button class="modal-close" onclick="closeModal('moderateMaterialModal')">&times;</button>
+      </div>
+
+      <div id="modMaterialDetails" style="margin-bottom: 1rem;"></div>
+
+      <form id="moderateMaterialForm">
+        <input type="hidden" id="modMaterialId" />
+
+        <div style="margin-bottom: 1rem;">
+          <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Moderation Action *</label>
+          <select id="modActionSelect" required style="width: 100%;">
+            <option value="APPROVED">✅ Approve & Publish to Students</option>
+            <option value="REJECTED">❌ Reject Resource</option>
+            <option value="ARCHIVED">📦 Archive</option>
+          </select>
+        </div>
+
+        <div style="margin-bottom: 1.5rem;">
+          <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Review Note / Rejection Reason</label>
+          <textarea id="modNoteInput" rows="3" style="width: 100%;" placeholder="Feedback or reason for decision..."></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-success" style="width: 100%; justify-content: center;">
+          Confirm Moderation Decision
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: UPLOAD ARCHIVE RESOURCE -->
+  <div id="uploadArchiveModal" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width: 580px;">
+      <div class="modal-header">
+        <h3>Contribute to Academic Archive</h3>
+        <button class="modal-close" onclick="closeModal('uploadArchiveModal')">&times;</button>
+      </div>
+
+      <form id="uploadArchiveForm">
+        <div style="margin-bottom: 1rem;">
+          <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Title / Assessment Name *</label>
+          <input type="text" id="arcTitle" required style="width: 100%;" placeholder="e.g. Distributed Systems Final Exam 2023 with Solutions" />
+        </div>
+
+        <div style="margin-bottom: 1rem;">
+          <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Description / Context</label>
+          <textarea id="arcDescription" rows="2" style="width: 100%;" placeholder="Brief outline, professor name, exam instructions, topics covered..."></textarea>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+          <div>
+            <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Archive Category *</label>
+            <select id="arcResourceTypeSelect" required style="width: 100%;">
+              <option value="PAST_EXAM">📝 Past Exam Paper</option>
+              <option value="PROJECT">💻 Student / Graduation Project</option>
+              <option value="SOLUTION">💡 Solutions & Answer Key</option>
+              <option value="REFERENCE">📚 Reference Implementation</option>
+            </select>
+          </div>
+
+          <div>
+            <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Assessment Type</label>
+            <select id="arcAssessmentTypeSelect" style="width: 100%;">
+              <option value="MIDTERM">Midterm Exam</option>
+              <option value="FINAL">Final Exam</option>
+              <option value="QUIZ">Quiz / Test</option>
+              <option value="LAB_EXAM">Lab / Practical Exam</option>
+              <option value="GRADUATION_PROJECT">Graduation Project</option>
+              <option value="TERM_PROJECT">Term Project</option>
+              <option value="ASSIGNMENT">Assignment</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+          <div>
+            <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Exam / Project Year</label>
+            <input type="number" id="arcExamYear" min="2000" max="2035" style="width: 100%;" placeholder="e.g. 2024" />
+          </div>
+
+          <div>
+            <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Target Course Offering *</label>
+            <select id="arcCourseOfferingSelect" required style="width: 100%;">
+              <option value="">Select course...</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="arcOfficialWrapper" style="margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; background: #f8fafc; padding: 0.75rem; border-radius: var(--radius); border: 1px solid var(--neutral-200);">
+          <input type="checkbox" id="arcIsOfficial" style="width: 1.15rem; height: 1.15rem;" />
+          <div>
+            <label for="arcIsOfficial" style="font-weight: 600; cursor: pointer;">⭐ Certify as Official Instructor / Department Solution</label>
+            <p style="font-size: 0.75rem; color: var(--neutral-600); margin: 0;">Authorized instructors & admins only. Student contributions are kept as references.</p>
+          </div>
+        </div>
+
+        <div style="margin-bottom: 1rem;">
+          <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Tags (comma separated)</label>
+          <input type="text" id="arcTags" style="width: 100%;" placeholder="e.g. final,2023,solutions,paxos" />
+        </div>
+
+        <div style="margin-bottom: 1.5rem;">
+          <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">File (PDF, PPTX, DOCX, ZIP Archives, Code — Max 100MB) *</label>
+          <input type="file" id="arcFileInput" required style="width: 100%;" />
+        </div>
+
+        <button type="submit" id="uploadArchiveSubmitBtn" class="btn btn-primary" style="width: 100%; justify-content: center;">
+          🚀 Submit to Archive
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: MODERATE ARCHIVE RESOURCE -->
+  <div id="moderateArchiveModal" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width: 500px;">
+      <div class="modal-header">
+        <h3>Moderate Archive Submission</h3>
+        <button class="modal-close" onclick="closeModal('moderateArchiveModal')">&times;</button>
+      </div>
+
+      <div id="modArchiveDetails" style="margin-bottom: 1rem;"></div>
+
+      <form id="moderateArchiveForm">
+        <input type="hidden" id="modArchiveId" />
+
+        <div style="margin-bottom: 1rem;">
+          <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Moderation Action *</label>
+          <select id="modArchiveDecision" required style="width: 100%;">
+            <option value="APPROVE">✅ Approve & Publish to Archive</option>
+            <option value="REJECT">❌ Reject Submission</option>
+            <option value="ARCHIVE">📦 Archive Resource</option>
+          </select>
+        </div>
+
+        <div style="margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; background: #f8fafc; padding: 0.75rem; border-radius: var(--radius); border: 1px solid var(--neutral-200);">
+          <input type="checkbox" id="modArchiveIsOfficial" style="width: 1.15rem; height: 1.15rem;" />
+          <div>
+            <label for="modArchiveIsOfficial" style="font-weight: 600; cursor: pointer;">⭐ Mark as Official Solution / Answer Key</label>
+            <p style="font-size: 0.75rem; color: var(--neutral-600); margin: 0;">Verified instructor or department solution</p>
+          </div>
+        </div>
+
+        <div style="margin-bottom: 1.5rem;">
+          <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Moderation Note / Rejection Reason</label>
+          <textarea id="modArchiveNote" rows="3" style="width: 100%;" placeholder="Feedback or note for student..."></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-success" style="width: 100%; justify-content: center;">
+          Confirm Archive Moderation
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: TAKE TIMED QUIZ -->
+  <div id="takeQuizModal" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width: 720px;">
+      <div class="modal-header" style="border-bottom: 2px solid var(--neutral-200); padding-bottom: 0.75rem;">
+        <div>
+          <h3 id="runnerQuizTitle" style="margin: 0;">Timed Quiz Attempt</h3>
+          <span id="runnerQuizInfo" style="font-size: 0.85rem; color: var(--neutral-600);">Attempt #1</span>
+        </div>
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <div id="quizTimerBadge" style="background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; font-weight: 700; padding: 0.35rem 0.75rem; border-radius: 9999px; font-size: 0.95rem;">
+            ⏱️ <span id="quizCountdown">--:--</span>
+          </div>
+          <button class="modal-close" onclick="confirmExitQuiz()">&times;</button>
+        </div>
+      </div>
+
+      <div id="quizRunnerBody" style="padding: 1.25rem 0; min-height: 260px;">
+        <!-- Question Content Rendered Dynamically -->
+      </div>
+
+      <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--neutral-200); padding-top: 1rem;">
+        <button id="quizPrevBtn" class="btn btn-secondary btn-sm" onclick="navigateQuizQuestion(-1)">⬅️ Previous</button>
+        <span id="quizQuestionCounter" style="font-size: 0.85rem; font-weight: 600; color: var(--neutral-600);">Question 1 of 5</span>
+        <div style="display: flex; gap: 0.5rem;">
+          <button id="quizNextBtn" class="btn btn-secondary btn-sm" onclick="navigateQuizQuestion(1)">Next ➡️</button>
+          <button id="quizSubmitBtn" class="btn btn-primary btn-sm" onclick="submitActiveQuiz()">🏁 Submit Quiz</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: QUIZ RESULT -->
+  <div id="quizResultModal" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width: 480px; text-align: center;">
+      <div style="font-size: 3rem; margin-bottom: 0.5rem;" id="quizResultIcon">🏆</div>
+      <h3 id="quizResultTitle" style="margin-bottom: 0.5rem;">Quiz Evaluation Completed!</h3>
+      <div id="quizResultBadgeContainer" style="margin-bottom: 1rem;"></div>
+
+      <div style="background: #f8fafc; border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1.5rem; border: 1px solid var(--neutral-200);">
+        <div style="font-size: 2.25rem; font-weight: 800; color: var(--neutral-900);" id="quizResultScore">0%</div>
+        <p style="margin: 0; font-size: 0.85rem; color: var(--neutral-600);" id="quizResultPoints">0 of 0 points earned</p>
+      </div>
+
+      <div style="display: flex; gap: 0.75rem; justify-content: center;">
+        <button class="btn btn-secondary" onclick="closeModal('quizResultModal'); loadQuizzes();">Close</button>
+        <button id="openReviewFromResultBtn" class="btn btn-primary">📖 Review Answers</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: QUIZ REVIEW -->
+  <div id="quizReviewModal" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width: 760px; max-height: 85vh; display: flex; flex-direction: column;">
+      <div class="modal-header">
+        <div>
+          <h3 id="reviewQuizTitle">Quiz Attempt Review</h3>
+          <p id="reviewScoreHeader" style="font-size: 0.85rem; color: var(--neutral-600); margin: 0;"></p>
+        </div>
+        <button class="modal-close" onclick="closeModal('quizReviewModal')">&times;</button>
+      </div>
+
+      <div id="quizReviewBody" style="overflow-y: auto; padding: 1rem 0; flex: 1;">
+        <!-- Detailed answers and explanations rendered dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CREATE QUESTION -->
+  <div id="createQuestionModal" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width: 600px;">
+      <div class="modal-header">
+        <h3>➕ Add Question to Bank</h3>
+        <button class="modal-close" onclick="closeModal('createQuestionModal')">&times;</button>
+      </div>
+
+      <form id="createQuestionForm">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+          <div>
+            <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Course Offering *</label>
+            <select id="qCourseOfferingSelect" required style="width: 100%;"></select>
+          </div>
+          <div>
+            <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Question Type *</label>
+            <select id="qTypeSelect" required style="width: 100%;">
+              <option value="MULTIPLE_CHOICE">Multiple Choice</option>
+              <option value="TRUE_FALSE">True / False</option>
+              <option value="SHORT_ANSWER">Short Answer / Essay</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+          <div>
+            <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Difficulty</label>
+            <select id="qDifficultySelect" style="width: 100%;">
+              <option value="EASY">Easy</option>
+              <option value="MEDIUM" selected>Medium</option>
+              <option value="HARD">Hard</option>
+            </select>
+          </div>
+          <div>
+            <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Chapter</label>
+            <input type="text" id="qChapter" style="width: 100%;" placeholder="e.g. Chapter 4" />
+          </div>
+          <div>
+            <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Topic</label>
+            <input type="text" id="qTopic" style="width: 100%;" placeholder="e.g. Paxos Consensus" />
+          </div>
+        </div>
+
+        <div style="margin-bottom: 1rem;">
+          <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Question Prompt *</label>
+          <textarea id="qPrompt" required rows="3" style="width: 100%;" placeholder="Enter problem statement..."></textarea>
+        </div>
+
+        <!-- Options Container for MCQ / True False -->
+        <div id="qOptionsContainer" style="margin-bottom: 1rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+            <label style="font-weight: 600;">Answer Options (select the radio for correct answer) *</label>
+            <button type="button" class="btn btn-secondary btn-sm" onclick="addOptionRow()">➕ Add Option</button>
+          </div>
+          <div id="optionsList">
+            <!-- Dynamic Option Rows -->
+          </div>
+        </div>
+
+        <div style="margin-bottom: 1.5rem;">
+          <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Pedagogical Explanation / Solution Rationale</label>
+          <textarea id="qExplanation" rows="2" style="width: 100%;" placeholder="Detailed explanation shown after submission..."></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center;">
+          💾 Save Question to Bank
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: CREATE QUIZ -->
+  <div id="createQuizModal" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width: 650px;">
+      <div class="modal-header">
+        <h3>➕ Create Timed Course Quiz</h3>
+        <button class="modal-close" onclick="closeModal('createQuizModal')">&times;</button>
+      </div>
+
+      <form id="createQuizForm">
+        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+          <div>
+            <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Quiz Title *</label>
+            <input type="text" id="quizTitleInput" required style="width: 100%;" placeholder="e.g. Midterm Readiness Assessment" />
+          </div>
+          <div>
+            <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Course Offering *</label>
+            <select id="quizCourseOfferingSelect" required style="width: 100%;"></select>
+          </div>
+        </div>
+
+        <div style="margin-bottom: 1rem;">
+          <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Instructions / Description</label>
+          <textarea id="quizDescInput" rows="2" style="width: 100%;" placeholder="Instructions, allowed resources, honor code notice..."></textarea>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+          <div>
+            <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Duration (Mins) *</label>
+            <input type="number" id="quizDurationInput" required min="1" max="300" value="30" style="width: 100%;" />
+          </div>
+          <div>
+            <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Passing Score (%) *</label>
+            <input type="number" id="quizPassingScoreInput" required min="0" max="100" value="50" style="width: 100%;" />
+          </div>
+          <div>
+            <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Max Attempts *</label>
+            <input type="number" id="quizMaxAttemptsInput" required min="1" max="10" value="3" style="width: 100%;" />
+          </div>
+        </div>
+
+        <div style="margin-bottom: 1.25rem; display: flex; gap: 1.5rem; background: #f8fafc; padding: 0.75rem; border-radius: var(--radius); border: 1px solid var(--neutral-200);">
+          <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+            <input type="checkbox" id="quizShuffleQ" checked />
+            <span style="font-size: 0.85rem; font-weight: 600;">🔀 Randomize Question Order</span>
+          </label>
+          <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+            <input type="checkbox" id="quizShuffleOpt" checked />
+            <span style="font-size: 0.85rem; font-weight: 600;">🔀 Randomize Option Order</span>
+          </label>
+        </div>
+
+        <div style="margin-bottom: 1rem;">
+          <label style="font-weight: 600; display: block; margin-bottom: 0.5rem;">Select Questions to Include:</label>
+          <div id="quizQuestionPickerList" style="max-height: 180px; overflow-y: auto; border: 1px solid var(--neutral-200); border-radius: var(--radius); padding: 0.5rem;">
+            <p style="color: var(--neutral-600); font-size: 0.85rem;">Select course offering to load questions from bank.</p>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center;">
+          🚀 Create Quiz
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: QUIZ ANALYTICS -->
+  <div id="quizAnalyticsModal" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width: 720px;">
+      <div class="modal-header">
+        <h3 id="analyticsQuizTitle">Cohort Quiz Performance Analytics</h3>
+        <button class="modal-close" onclick="closeModal('quizAnalyticsModal')">&times;</button>
+      </div>
+      <div id="quizAnalyticsBody" style="padding: 1rem 0;">
+        <!-- Analytics metrics & student attempts table rendered dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: CREATE / WRITE BLOG POST -->
+  <div id="createPostModal" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width: 760px;">
+      <div class="modal-header">
+        <h3>✍️ Publish Student Article / Idea</h3>
+        <button class="modal-close" onclick="closeModal('createPostModal')">&times;</button>
+      </div>
+
+      <form id="createPostForm">
+        <div style="margin-bottom: 1rem;">
+          <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Article Title *</label>
+          <input type="text" id="postTitleInput" required style="width: 100%; font-size: 1.05rem;" placeholder="e.g. Building a Distributed Cache from Scratch in TypeScript" />
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+          <div>
+            <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Category *</label>
+            <select id="postCategorySelect" required style="width: 100%;">
+              <option value="Programming">💻 Programming</option>
+              <option value="Software Engineering">⚙️ Software Engineering</option>
+              <option value="Technology">🚀 Technology</option>
+              <option value="Project Ideas">💡 Project Ideas</option>
+              <option value="Academic Discussion">📚 Academic Discussion</option>
+              <option value="Career Development">💼 Career Development</option>
+              <option value="Student Experiences">🎓 Student Experiences</option>
+            </select>
+          </div>
+          <div>
+            <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Tags (comma-separated)</label>
+            <input type="text" id="postTagsInput" style="width: 100%;" placeholder="e.g. distributed-systems, cache, redis" />
+          </div>
+        </div>
+
+        <div style="margin-bottom: 1rem;">
+          <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Cover Image (Optional)</label>
+          <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <input type="file" id="postCoverFileInput" accept="image/*" style="flex: 1;" />
+            <input type="hidden" id="postCoverUrl" />
+            <span id="coverUploadStatus" style="font-size: 0.85rem; color: var(--neutral-600);"></span>
+          </div>
+        </div>
+
+        <div style="margin-bottom: 1rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.25rem;">
+            <label style="font-weight: 600;">Article Content (Markdown Supported) *</label>
+            <button type="button" id="togglePostPreviewBtn" class="btn btn-secondary btn-sm" style="font-size: 0.75rem;">👁️ Toggle Preview</button>
+          </div>
+          <textarea id="postContentInput" required rows="10" style="width: 100%; font-family: monospace; font-size: 0.9rem;" placeholder="Write your technical article, tutorial, code snippets, or project idea here using Markdown..."></textarea>
+          <div id="postPreviewBox" class="hidden" style="border: 1px solid var(--neutral-200); border-radius: var(--radius); padding: 1rem; max-height: 250px; overflow-y: auto; background: #fff; margin-top: 0.5rem;"></div>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center;">
+          🚀 Submit Article for Publication
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: VIEW / READ ARTICLE -->
+  <div id="viewPostModal" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width: 820px; max-height: 90vh; overflow-y: auto;">
+      <div class="modal-header">
+        <span id="articleCategoryBadge" class="badge" style="background: var(--primary); color: #fff;"></span>
+        <button class="modal-close" onclick="closeModal('viewPostModal')">&times;</button>
+      </div>
+
+      <div id="articleCoverContainer" style="margin-bottom: 1.25rem; display: none;">
+        <img id="articleCoverImg" src="" alt="Cover" style="width: 100%; max-height: 280px; object-fit: cover; border-radius: var(--radius);" />
+      </div>
+
+      <h1 id="articleTitle" style="font-size: 1.6rem; font-weight: 800; line-height: 1.3; margin-bottom: 0.75rem;"></h1>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; padding-bottom: 1rem; border-bottom: 1px solid var(--neutral-200); margin-bottom: 1.5rem;">
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <div style="width: 40px; height: 40px; border-radius: 50%; background: var(--primary); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700;">
+            <span id="authorAvatarLetter">A</span>
+          </div>
+          <div>
+            <div id="articleAuthorName" style="font-weight: 700; cursor: pointer; color: var(--primary);"></div>
+            <div id="articleMetaDate" style="font-size: 0.8rem; color: var(--neutral-600);"></div>
+          </div>
+        </div>
+
+        <!-- Social Engagement Actions -->
+        <div style="display: flex; gap: 0.5rem; align-items: center;">
+          <button id="likeArticleBtn" class="btn btn-sm btn-secondary" style="border-radius: 9999px;">
+            ❤️ <span id="articleLikeCount">0</span>
+          </button>
+          <button id="bookmarkArticleBtn" class="btn btn-sm btn-secondary" style="border-radius: 9999px;">
+            ⭐ Save
+          </button>
+          <button id="shareArticleBtn" class="btn btn-sm btn-secondary" style="border-radius: 9999px;">
+            🔗 Share
+          </button>
+          <button id="reportArticleBtn" class="btn btn-sm btn-danger" style="border-radius: 9999px;">
+            🚩 Report
+          </button>
+        </div>
+      </div>
+
+      <!-- Article Content Body -->
+      <div id="articleContentBody" style="line-height: 1.8; font-size: 1rem; color: var(--neutral-800); margin-bottom: 2rem;"></div>
+
+      <div id="articleTagsList" style="display: flex; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 2rem;"></div>
+
+      <hr style="border: 0; border-top: 1px solid var(--neutral-200); margin-bottom: 1.5rem;" />
+
+      <!-- Comments Thread -->
+      <div>
+        <h3 style="margin-bottom: 1rem;">💬 Discussion (<span id="articleCommentsCount">0</span>)</h3>
+
+        <!-- Add Comment Form -->
+        <form id="addCommentForm" style="margin-bottom: 1.5rem;">
+          <textarea id="commentInput" required rows="3" style="width: 100%; margin-bottom: 0.5rem;" placeholder="Join the discussion... Be constructive and respectful."></textarea>
+          <button type="submit" class="btn btn-primary btn-sm">Post Comment</button>
+        </form>
+
+        <!-- Comments List -->
+        <div id="articleCommentsList" style="display: flex; flex-direction: column; gap: 1rem;">
+          <!-- Rendered dynamically -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: AUTHOR PROFILE -->
+  <div id="authorProfileModal" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width: 650px;">
+      <div class="modal-header">
+        <h3 id="authorProfileTitle">Student Author Profile</h3>
+        <button class="modal-close" onclick="closeModal('authorProfileModal')">&times;</button>
+      </div>
+
+      <div id="authorProfileHeader" style="text-align: center; padding: 1rem 0; border-bottom: 1px solid var(--neutral-200); margin-bottom: 1rem;">
+        <!-- Populated dynamically -->
+      </div>
+
+      <h4>Published Articles</h4>
+      <div id="authorArticlesList" style="max-height: 300px; overflow-y: auto; margin-top: 0.75rem;">
+        <!-- Populated dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: REPORT CONTENT -->
+  <div id="reportContentModal" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width: 480px;">
+      <div class="modal-header">
+        <h3>🚩 Report Inappropriate Content</h3>
+        <button class="modal-close" onclick="closeModal('reportContentModal')">&times;</button>
+      </div>
+
+      <form id="reportContentForm">
+        <input type="hidden" id="reportTargetType" value="POST" />
+        <input type="hidden" id="reportTargetId" value="" />
+
+        <div style="margin-bottom: 1rem;">
+          <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Reason for Report *</label>
+          <select id="reportReasonSelect" required style="width: 100%;">
+            <option value="Inappropriate Content">Inappropriate Content</option>
+            <option value="Academic Misconduct / Plagiarism">Academic Misconduct / Plagiarism</option>
+            <option value="Harassment / Hate Speech">Harassment / Hate Speech</option>
+            <option value="Spam / Advertisements">Spam / Advertisements</option>
+            <option value="Other">Other Policy Violation</option>
+          </select>
+        </div>
+
+        <div style="margin-bottom: 1.25rem;">
+          <label style="display: block; font-weight: 600; margin-bottom: 0.25rem;">Additional Details (Optional)</label>
+          <textarea id="reportDetailsInput" rows="3" style="width: 100%;" placeholder="Explain why this content violates academic community standards..."></textarea>
+        </div>
+
+        <button type="submit" class="btn btn-danger" style="width: 100%; justify-content: center;">
+          Submit Report to Moderators
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- MODAL: BLOG CONTENT MODERATION (ADMIN) -->
+  <div id="blogModerationModal" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width: 800px;">
+      <div class="modal-header">
+        <h3>🛡️ Content Moderation & Safety Center</h3>
+        <button class="modal-close" onclick="closeModal('blogModerationModal')">&times;</button>
+      </div>
+
+      <div style="display: flex; gap: 0.5rem; margin-bottom: 1.25rem;">
+        <button class="btn btn-sm mod-tab-pill active" data-tab="pending">⏳ Pending Posts (<span id="modPendingCount">0</span>)</button>
+        <button class="btn btn-sm mod-tab-pill btn-secondary" data-tab="reports">🚩 Reports Queue (<span id="modReportsCount">0</span>)</button>
+      </div>
+
+      <div id="modPendingContainer">
+        <!-- Rendered dynamically -->
+      </div>
+
+      <div id="modReportsContainer" class="hidden">
+        <!-- Rendered dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: AI USAGE & ANALYTICS (ADMIN) -->
+  <div id="aiAnalyticsModal" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width: 800px;">
+      <div class="modal-header">
+        <h3>📊 Institutional AI Usage & Model Analytics</h3>
+        <button class="modal-close" onclick="closeModal('aiAnalyticsModal')">&times;</button>
+      </div>
+      <div id="aiAnalyticsBody" style="padding: 1rem 0;">
+        <!-- Analytics metrics and top consumers rendered dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: SETTINGS & TELEGRAM UNIFICATION -->
+  <div id="settingsModal" class="modal-overlay hidden">
+    <div class="modal-content" style="max-width: 750px;">
+      <div class="modal-header">
+        <h3>⚙️ University Settings & Telegram Companion</h3>
+        <button class="modal-close" onclick="closeModal('settingsModal')">&times;</button>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 1rem;">
+        <!-- Left: Telegram Integration -->
+        <div style="background: var(--neutral-50, #f8fafc); padding: 1.25rem; border-radius: var(--radius-md, 8px); border: 1px solid var(--neutral-200, #e2e8f0);">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
+            <h4 style="margin: 0; font-size: 1rem; color: var(--neutral-900, #0f172a);">📱 Telegram Bot Link</h4>
+            <span id="settingsTgBadge" class="brand-badge" style="background: var(--neutral-400); color: white;">Checking...</span>
+          </div>
+          <p style="font-size: 0.85rem; color: var(--neutral-600, #475569); line-height: 1.4; margin-bottom: 1rem;">
+            Link your Telegram account to receive instant deadline alerts, browse course materials, participate in quizzes, and query the AI assistant.
+          </p>
+
+          <div id="settingsTgLinkedInfo" class="hidden" style="margin-bottom: 1rem; padding: 0.75rem; background: white; border-radius: 6px; border: 1px solid var(--neutral-200);">
+            <div style="font-size: 0.85rem;"><strong>Linked Handle:</strong> <span id="settingsTgUsername">-</span></div>
+            <div style="font-size: 0.85rem; margin-top: 0.25rem;"><strong>Chat ID:</strong> <span id="settingsTgChatId">-</span></div>
+          </div>
+
+          <div id="settingsTgUnlinkedBox">
+            <button id="generateTgOtpBtn" class="btn btn-primary btn-sm" style="width: 100%;">
+              🔑 Generate Linking Code (OTP)
+            </button>
+            <div id="tgOtpResultBox" class="hidden" style="margin-top: 0.75rem; text-align: center; background: white; padding: 0.75rem; border-radius: 6px; border: 1px dashed var(--primary);">
+              <div style="font-size: 0.75rem; color: var(--neutral-500); text-transform: uppercase;">Your 6-Digit OTP</div>
+              <div id="tgOtpCode" style="font-size: 1.6rem; font-weight: 700; letter-spacing: 4px; color: var(--primary); margin: 0.25rem 0;">------</div>
+              <div id="tgOtpExpiry" style="font-size: 0.75rem; color: var(--neutral-600); margin-bottom: 0.5rem;">Valid for 15 minutes</div>
+              <a id="tgDirectLinkBtn" href="#" target="_blank" class="btn btn-secondary btn-sm" style="font-size: 0.8rem; width: 100%;">
+                📲 Open Bot in Telegram
+              </a>
+              <div style="font-size: 0.75rem; color: var(--neutral-500); margin-top: 0.5rem;">Or type <code>/link &lt;otp&gt;</code> in chat</div>
+            </div>
+          </div>
+
+          <div style="margin-top: 1.25rem; font-size: 0.8rem; color: var(--neutral-500);">
+            <strong>Bot Commands:</strong> <code>/courses</code>, <code>/assignments</code>, <code>/materials</code>, <code>/quizzes</code>, <code>/practice</code>, <code>/ai</code>
+          </div>
+        </div>
+
+        <!-- Right: Notification Preferences -->
+        <div style="background: var(--neutral-50, #f8fafc); padding: 1.25rem; border-radius: var(--radius-md, 8px); border: 1px solid var(--neutral-200, #e2e8f0);">
+          <h4 style="margin: 0 0 0.75rem 0; font-size: 1rem; color: var(--neutral-900, #0f172a);">🔔 Deadline Reminders</h4>
+          <p style="font-size: 0.85rem; color: var(--neutral-600, #475569); line-height: 1.4; margin-bottom: 1rem;">
+            Select which automated alerts you receive prior to upcoming assignment deadlines:
+          </p>
+
+          <form id="settingsPrefForm" style="display: flex; flex-direction: column; gap: 0.6rem;">
+            <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; cursor: pointer;">
+              <input type="checkbox" id="prefRemind3Days" checked />
+              <span>⏰ <strong>3 Days Before:</strong> Advance reminder</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; cursor: pointer;">
+              <input type="checkbox" id="prefRemind1Day" checked />
+              <span>⏰ <strong>24 Hours Before:</strong> Critical warning</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; cursor: pointer;">
+              <input type="checkbox" id="prefRemind2Hours" checked />
+              <span>🔥 <strong>2 Hours Before:</strong> Final urgency alert</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; cursor: pointer;">
+              <input type="checkbox" id="prefAnnouncements" checked />
+              <span>📢 <strong>Broadcasts:</strong> Official announcements</span>
+            </label>
+
+            <div style="border-top: 1px solid var(--neutral-200); margin: 0.5rem 0; padding-top: 0.5rem;">
+              <div style="font-size: 0.8rem; font-weight: 600; color: var(--neutral-700); margin-bottom: 0.4rem;">Notification Channels:</div>
+              <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; cursor: pointer; margin-bottom: 0.4rem;">
+                <input type="checkbox" id="prefChannelWeb" checked />
+                <span>🌐 In-App Web Bell Dropdown</span>
+              </label>
+              <label style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; cursor: pointer;">
+                <input type="checkbox" id="prefChannelTelegram" checked />
+                <span>📱 Telegram Direct Messages</span>
+              </label>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-sm" style="margin-top: 0.5rem;">
+              💾 Save Notification Preferences
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/app.js"></script>
+</body>
+</html>
